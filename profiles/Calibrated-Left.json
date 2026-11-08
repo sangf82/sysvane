@@ -1,0 +1,27 @@
+{
+  "name": "Calibrated-Left",
+  "description": "Màn hình Trái (DP1): Brightness 70, Contrast 50, D65 6500K (R50 G50 B50)",
+  "settings": {
+    "0x02": 1,
+    "0x0C": 70,
+    "0x10": 70,
+    "0x12": 50,
+    "0x14": 5,
+    "0x16": 50,
+    "0x18": 50,
+    "0x1A": 50,
+    "0x52": 0,
+    "0x60": 15,
+    "0x62": 50,
+    "0x8D": 2,
+    "0xAC": 15548,
+    "0xAE": 32000,
+    "0xB2": 1,
+    "0xB6": 3,
+    "0xC8": 9,
+    "0xC9": 46507,
+    "0xCC": 2,
+    "0xDF": 514
+  },
+  "experimental_mappings": {}
+}

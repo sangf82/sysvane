@@ -1,0 +1,13 @@
+{
+  "name": "Color-Accurate-D65",
+  "description": "Calibrated sRGB/D65 (Brightness 70, Contrast 50, Matched User RGB)",
+  "settings": {
+    "0x10": 70,
+    "0x12": 50,
+    "0x14": 11,
+    "0x16": 47,
+    "0x18": 49,
+    "0x1A": 51
+  },
+  "experimental_mappings": {}
+}
