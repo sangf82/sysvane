@@ -1,3 +1,30 @@
 node_modules/
 target/
 dist/
+
+# secrets and keys (the M2 updater private key must never be committed)
+.env
+.env.*
+*.pem
+*.key
+*.pfx
+*.p12
+*.snk
+
+# local Claude Code state; skills are third-party, restore from skills-lock.json
+.claude/settings.local.json
+.claude/worktrees/
+.claude/skills/
+.claude/statusline-both.ps1
+
+# generated or runtime output
+desktop/src-tauri/gen/
+*.log
+sysvane-diagnostics.zip
+*.pdb
+
+# OS and editor
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
