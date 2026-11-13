@@ -71,6 +71,13 @@ Use `agent-desktop`, a CLI that reads and operates apps through Windows UI Autom
 - `.claude/hooks/format-rust.ps1` runs `rustfmt` after each edit of a `.rs` file.
 - For Claude Code questions, use the `claude-code-guide` MCP first.
 
+## Agents and release
+
+- `rust-core` agent (`.claude/agents/`): `core/`, `wire/`, `modules/`; loads `rust-best-practices`; runs fmt, clippy `-D warnings` and tests before it reports.
+- `frontend-ui` agent: `desktop/`, `DESIGN.md`, `branding/`; loads `impeccable`, `unslop`, `animate-ui`, `agent-desktop`; runs `npm run build`.
+- `.claude/hooks/lint-on-stop.ps1` runs at Stop: fmt + clippy if Rust changed, `tsc --noEmit` if `desktop/src` changed; failure blocks the stop once.
+- CI: `.github/workflows/ci.yml` on push to `main` and PRs. Release: `powershell -NoProfile -File scripts\bump-version.ps1 X.Y.Z`, commit, `git tag vX.Y.Z`, `git push --tags`; `release.yml` checks the tag equals the Cargo and package versions, builds the NSIS installer and publishes a pre-release. Updater signing and `latest.json` arrive in M2.
+
 ## Conventions
 
 - Rust 2024 edition, `std::thread` and channels in the core, no async runtime unless a module proves it needs one.

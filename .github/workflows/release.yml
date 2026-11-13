@@ -1,0 +1,50 @@
+name: Release
+
+# Tag vX.Y.Z (matching Cargo.toml) -> tests, NSIS installer, GitHub pre-release.
+# M2 adds updater signing and latest.json here.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tag must match the workspace version
+        shell: pwsh
+        run: |
+          $v = (Select-String -Path Cargo.toml -Pattern '^version = "(.+)"').Matches[0].Groups[1].Value
+          $pkg = (Get-Content desktop/package.json -Raw | ConvertFrom-Json).version
+          if ("v$v" -ne $env:GITHUB_REF_NAME -or $pkg -ne $v) {
+            throw "Tag $env:GITHUB_REF_NAME, Cargo.toml $v, package.json $pkg must all agree"
+          }
+
+      - uses: dtolnay/rust-toolchain@1.99.0
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - run: cargo test -p sysvane-core -p sysvane-wire
+
+      - name: Build installer
+        working-directory: desktop
+        run: |
+          npm ci
+          npx tauri build
+
+      - name: Publish pre-release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $setup = Get-ChildItem target/release/bundle/nsis/*-setup.exe | Select-Object -First 1
+          if (-not $setup) { throw 'NSIS installer not found' }
+          gh release create $env:GITHUB_REF_NAME $setup.FullName --prerelease --generate-notes --title $env:GITHUB_REF_NAME
