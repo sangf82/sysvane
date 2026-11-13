@@ -1,0 +1,40 @@
+{
+  "brand": "SysVane",
+  "tagline": "One quiet core for every device",
+  "brief": "A tray-first Windows app that replaces vendor suites for monitoring, displays, RGB, fans and the AIO LCD. It runs near zero RAM and only shows a window when asked.",
+  "adjectives": ["quiet", "exact", "technical", "light"],
+  "criteria": "Success: reads at 16 px in the tray on light and dark taskbars, works in one colour, and does not look like a gaming-brand mark.",
+  "industry": "software",
+  "nav": ["Overview", "Performance", "Devices"],
+  "brand_color": "#3ecf8e",
+  "tile_color": "#171717",
+  "greyscale": false,
+  "designer": "SysVane",
+  "round": 3,
+  "concepts": [
+    {
+      "name": "Crate",
+      "symbol": "sysvane-symbol.svg",
+      "lockup": "sysvane-horizontal.svg",
+      "symbol_on_tile": "sysvane-symbol-reversed.svg",
+      "symbol_on_dark": "sysvane-symbol-reversed.svg",
+      "lockup_on_tile": "sysvane-horizontal-reversed.svg",
+      "lockup_on_dark": "sysvane-horizontal-reversed.svg",
+      "stacked_on_tile": "sysvane-stacked-reversed.svg",
+      "stacked_on_dark": "sysvane-stacked-reversed.svg",
+      "idea": "A crate as an isometric cube: the machine's devices in one box, with the lid lit.",
+      "rationale": [
+        "Three faces and one lit lid: one owner, many devices",
+        "Survives one colour: the gaps keep the cube readable in black or white",
+        "Ink tile app icon stays visible on light and dark taskbars",
+        "Emerald is the only colour, as in DESIGN.md"
+      ]
+    }
+  ],
+  "recommendation": "Crate: the cube carries the vendor-suite 'crate' lineage without copying a shape, and the lit lid gives one recognisable colour event.",
+  "next_steps": [
+    "Use the horizontal lockup in the README",
+    "Make a new icon.icns if a macOS build is ever planned",
+    "Run a trademark search before public release"
+  ]
+}

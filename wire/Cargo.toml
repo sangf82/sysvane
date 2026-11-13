@@ -1,0 +1,11 @@
+[package]
+name = "sysvane-wire"
+version.workspace = true
+description = "What the SysVane core and UI agree on: the snapshot format, the pipe name and the process names"
+edition.workspace = true
+
+[dependencies]
+serde = { version = "1.0.229", features = ["derive"] }
+
+[dev-dependencies]
+serde_json = "1.0.154"

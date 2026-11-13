@@ -1,9 +1,13 @@
+import "@fontsource-variable/inter";
+import { ReducedMotionConfig } from "@animate-ui/react/utils/motion";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <App />
+    <ReducedMotionConfig>
+      <App />
+    </ReducedMotionConfig>
   </React.StrictMode>,
 );

@@ -1,7 +1,7 @@
 # Armoury Crate replacement: target, needs, plan and LCD add-on research
 
 **Date:** 2026-11-08
-**Status:** Research only. Nothing in this note has been implemented. No code was changed, nothing was installed, and no data was sent to the LCD or any other device.
+**Status:** Historical research. The current plan is [docs/plan.md](../plan.md), under the new name sysvane.
 **Companion note:** [2026-11-08-universal-pc-control-tools.md](2026-11-08-universal-pc-control-tools.md) holds the tool-by-tool survey and its sources. [2026-11-04-low-ram-react-monitor-stack.md](2026-11-04-low-ram-react-monitor-stack.md) covers UI shell RAM.
 
 **Evidence labels.** *Measured here* means read on this PC on 2026-11-08. *Source* means read in a project's code or docs. *User-reported* means the owner told us. *Estimate* means judgement with no measurement.

@@ -1,20 +1,24 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "desktop",
-  "version": "0.1.0",
-  "identifier": "com.toushou.monitor",
+  "productName": "SysVane",
+  "mainBinaryName": "sysvane-ui",
+  "identifier": "com.sysvane.app",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "cargo build --release -p sysvane-core --manifest-path ../Cargo.toml && npm run build",
     "frontendDist": "../dist"
   },
   "app": {
     "windows": [
       {
-        "title": "desktop",
-        "width": 800,
-        "height": 600
+        "label": "main",
+        "title": "SysVane",
+        "visible": false,
+        "width": 1180,
+        "height": 780,
+        "minWidth": 900,
+        "minHeight": 600
       }
     ],
     "security": {
@@ -23,12 +27,13 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis"],
+    "resources": { "../../target/release/sysvane-core.exe": "sysvane-core.exe" },
+    "windows": { "nsis": { "installMode": "perMachine", "installerHooks": "installer-hooks.nsh" } },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
-      "icons/icon.icns",
       "icons/icon.ico"
     ]
   }
