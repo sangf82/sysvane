@@ -1,7 +1,7 @@
 import { AnimateIcon, IconPathStyle } from "@animate-ui/react/icons";
 import { spring, transition } from "@animate-ui/react/utils/motion";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Flyout } from "./Flyout";
 import { isFlyout, startCore } from "./host";
 import { type Msg, resolved, t, useLang } from "./i18n";
@@ -54,6 +54,7 @@ export default function App() {
   const [resource, setResource] = useState(RES.cpu);
   const update = useUpdate();
   const [installing, setInstalling] = useState(false);
+  const notes = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     isFlyout().then(setFlyout);
   }, []);
@@ -114,18 +115,27 @@ export default function App() {
         </div>
       </aside>
       <main className="content">
-        {!s ? (
-          <Waiting connected={st.connected} />
-        ) : (
+        {update && (
           <>
-            {update && (
-              <div className="banner" role="status">
-                {t("SysVane {v} is available.", { v: update.version })} {update.body && <span className="muted">{update.body}</span>}{" "}
+            <button className="update-chip" onClick={() => notes.current?.showModal()}>
+              {t("Update {v}", { v: update.version })}
+            </button>
+            <dialog ref={notes} className="update-dialog">
+              <h2>{t("SysVane {v} is available.", { v: update.version })}</h2>
+              <p className="notes">{(update.body ?? "").split("**").join("") || t("No changelog.")}</p>
+              <div className="row">
+                <button onClick={() => notes.current?.close()} disabled={installing}>{t("Later")}</button>
                 <button className="primary" disabled={installing} onClick={() => { setInstalling(true); install(update).catch(() => setInstalling(false)); }}>
                   {installing ? t("Installing…") : t("Install and restart")}
                 </button>
               </div>
-            )}
+            </dialog>
+          </>
+        )}
+        {!s ? (
+          <Waiting connected={st.connected} />
+        ) : (
+          <>
             <AnimatePresence initial={false}>
               {!st.connected && (
                 <motion.div key="banner" className="banner" role="alert" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={transition.reveal}>

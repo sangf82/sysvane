@@ -213,3 +213,11 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .btn { padding: var(--xs) var(--md); background: var(--canvas); color: var(--ink); border: 1px solid var(--hairline-strong); border-radius: var(--r-sm); cursor: pointer; font-size: 13px; }
 .btn:hover { background: var(--surface); }
 .btn[aria-pressed="true"] { background: var(--sel); border-color: var(--primary-deep); }
+
+.update-chip { position: absolute; top: var(--sm); right: var(--lg); z-index: 3; background: var(--primary); color: var(--on-primary); border: 0; border-radius: var(--r-sm); padding: var(--xs) var(--md); font-size: 12px; font-weight: 500; cursor: pointer; }
+.update-chip:hover { background: var(--primary-deep); }
+.update-dialog { width: min(480px, 90vw); padding: var(--lg); background: var(--surface); color: var(--ink); border: 1px solid var(--hairline-strong); border-radius: var(--r-sm); }
+.update-dialog::backdrop { background: rgb(0 0 0 / 0.5); }
+.update-dialog h2 { margin: 0 0 var(--md); font-size: 16px; font-weight: 500; }
+.update-dialog .notes { margin: 0 0 var(--lg); max-height: 40vh; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--mute); }
+.update-dialog .row { justify-content: flex-end; }
