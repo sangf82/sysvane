@@ -4,6 +4,21 @@ export type Lang = "auto" | "en" | "vi";
 
 /** English is the source text and the key. `t` only takes a string listed here, so a missing translation fails the build. */
 const VI = {
+  Settings: "Cài đặt",
+  About: "Giới thiệu",
+  Version: "Phiên bản",
+  Updates: "Cập nhật",
+  "You have the latest version.": "Bạn đang dùng bản mới nhất.",
+  "Checking…": "Đang kiểm tra…",
+  "Check for updates": "Kiểm tra cập nhật",
+  Appearance: "Giao diện",
+  Language: "Ngôn ngữ",
+  Theme: "Chủ đề",
+  "Background program": "Chương trình nền",
+  "Start with Windows is in the tray menu, because the background program owns it.": "Tùy chọn khởi động cùng Windows nằm trong menu khay, vì chương trình nền quản lý nó.",
+  "Settings and logs are kept in the SysVane folder under ProgramData.": "Cài đặt và nhật ký nằm trong thư mục SysVane ở ProgramData.",
+  Licences: "Giấy phép",
+  "CPU temperature uses PawnIO by namazso (driver GPL-2.0, modules LGPL-2.1), downloaded from its official release when SysVane is installed.": "Nhiệt độ CPU dùng PawnIO của namazso (driver GPL-2.0, module LGPL-2.1), tải từ bản phát hành chính thức khi cài SysVane.",
   Overview: "Tổng quan",
   "SysVane {v} is available.": "Đã có SysVane {v}.",
   "Install and restart": "Cài và khởi động lại",

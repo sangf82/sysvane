@@ -9,6 +9,7 @@ import { RES } from "./metrics";
 import { Overview } from "./pages/Overview";
 import { Performance } from "./pages/Performance";
 import { Processes } from "./pages/Processes";
+import { Settings } from "./pages/Settings";
 import { getState, subscribe } from "./store";
 import { install, useUpdate } from "./update";
 import { useTheme } from "./theme";
@@ -16,12 +17,13 @@ import { PROTOCOL } from "./wire";
 import { Icon, Logo, type IconName } from "./ui";
 import "./styles.css";
 
-type Page = "overview" | "performance" | "processes";
+type Page = "overview" | "performance" | "processes" | "settings";
 
 const NAV: { page: Page; label: Msg; icon: IconName }[] = [
   { page: "overview", label: "Overview", icon: "overview" },
   { page: "performance", label: "Performance", icon: "performance" },
   { page: "processes", label: "Processes", icon: "processes" },
+  { page: "settings", label: "Settings", icon: "settings" },
 ];
 
 function Waiting({ connected }: { connected: boolean }) {
@@ -52,7 +54,7 @@ export default function App() {
   const [flyout, setFlyout] = useState(false);
   const [page, setPage] = useState<Page>("overview");
   const [resource, setResource] = useState(RES.cpu);
-  const update = useUpdate();
+  const [update, recheck] = useUpdate();
   const [installing, setInstalling] = useState(false);
   const notes = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -146,7 +148,7 @@ export default function App() {
             <div className={st.connected ? "" : "stale"}>
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div key={page} initial={{ opacity: 0 }} animate={{ opacity: 1, transition: transition.panelIn }} exit={{ opacity: 0, transition: transition.panelOut }}>
-                  {page === "overview" ? <Overview s={s} h={st.hist} open={open} /> : page === "performance" ? <Performance s={s} h={st.hist} sel={resource} setSel={setResource} /> : <Processes list={s.processes} />}
+                  {page === "overview" ? <Overview s={s} h={st.hist} open={open} /> : page === "performance" ? <Performance s={s} h={st.hist} sel={resource} setSel={setResource} /> : page === "processes" ? <Processes list={s.processes} /> : <Settings update={update} recheck={recheck} />}
                 </motion.div>
               </AnimatePresence>
             </div>

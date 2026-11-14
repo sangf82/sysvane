@@ -7,6 +7,7 @@ import { ChevronUpIcon } from "./icons/chevron-up";
 import { LayoutDashboardIcon } from "./icons/layout-dashboard";
 import { ListIcon } from "./icons/list";
 import { SearchIcon } from "./icons/search";
+import { SlidersIcon } from "./icons/sliders";
 import { HISTORY, HISTORY_MINUTES } from "./series";
 
 /** Fill colour for a usage meter. Text is never coloured by state: emerald and yellow fail contrast on the canvas. */
@@ -25,6 +26,7 @@ const ICONS = {
   sortDesc: ChevronDownIcon,
   sortAsc: ChevronUpIcon,
   search: SearchIcon,
+  settings: SlidersIcon,
 } as const;
 export type IconName = keyof typeof ICONS;
 

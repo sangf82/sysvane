@@ -8,14 +8,14 @@ const DAY = 24 * 60 * 60 * 1000;
 /** Checks at start and once a day while the window stays open. A failed check (offline, no release) is silent. */
 export function useUpdate() {
   const [update, setUpdate] = useState<Update | null>(null);
+  const recheck = (): Promise<Update | null> => (isTauri() ? check().then((u) => (setUpdate(u), u), () => null) : Promise.resolve(null));
   useEffect(() => {
     if (!isTauri()) return;
-    const look = () => check().then((u) => u && setUpdate(u), () => {});
-    look();
-    const id = setInterval(look, DAY);
+    recheck();
+    const id = setInterval(recheck, DAY);
     return () => clearInterval(id);
   }, []);
-  return update;
+  return [update, recheck] as const;
 }
 
 /** Downloads, verifies the signature, then runs the installer, which stops the core and starts it again. */
