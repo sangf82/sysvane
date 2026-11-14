@@ -65,9 +65,13 @@ export default function App() {
   };
   useEffect(() => {
     isFlyout().then(setFlyout);
-    // The first start happens in the shell before this window listens, so ask for its result.
-    coreStartStatus().then(setCoreProblem);
   }, []);
+  // The shell starts the core on its own thread, so its result may arrive after this window opens: ask until connected.
+  useEffect(() => {
+    if (st.connected) return;
+    const id = setInterval(() => coreStartStatus().then((r) => r !== "ok" && setCoreProblem(r)), 1000);
+    return () => clearInterval(id);
+  }, [st.connected]);
   useEffect(() => {
     document.documentElement.lang = resolved();
   }, [lang]);
