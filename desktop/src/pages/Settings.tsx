@@ -55,13 +55,6 @@ export function Settings({ update, recheck }: { update: Update | null; recheck: 
       </section>
       <section className="section">
         <header>
-          <h2>{t("Background program")}</h2>
-        </header>
-        <p className="muted">{t("Start with Windows is in the tray menu, because the background program owns it.")}</p>
-        <p className="muted">{t("Settings and logs are kept in the SysVane folder under ProgramData.")}</p>
-      </section>
-      <section className="section">
-        <header>
           <h2>{t("Licences")}</h2>
         </header>
         <p className="muted">{t("CPU temperature uses PawnIO by namazso (driver GPL-2.0, modules LGPL-2.1), downloaded from its official release when SysVane is installed.")}</p>
