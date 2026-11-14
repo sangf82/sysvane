@@ -3,11 +3,17 @@ import { isTauri } from "@tauri-apps/api/core";
 import type { Update } from "@tauri-apps/plugin-updater";
 import { useEffect, useState } from "react";
 import { Dropdown } from "../Dropdown";
+import { sendCommand } from "../host";
+import { Switch } from "../Switch";
+import type { Snapshot } from "../wire";
 import { t, useLang } from "../i18n";
 import { useTheme } from "../theme";
 
 /** What the user can set from the window. Startup, fans and other core-owned settings arrive with the command channel (M3). */
-export function Settings({ update, recheck }: { update: Update | null; recheck: () => Promise<Update | null> }) {
+export function Settings({ update, recheck, devices }: { update: Update | null; recheck: () => Promise<Update | null>; devices: Snapshot["devices"] }) {
+  const core = devices.find((d) => d.id === "core");
+  const autostart = core?.controls.find((c) => c.id === "autostart")?.value === true;
+  const [sendError, setSendError] = useState<string | null>(null);
   const [version, setVersion] = useState("");
   const [checked, setChecked] = useState<"idle" | "busy" | "none">("idle");
   const [theme, setTheme] = useTheme();
@@ -52,6 +58,16 @@ export function Settings({ update, recheck }: { update: Update | null; recheck: 
           <span>{t("Theme")}</span>
           <Dropdown label={t("Theme")} value={theme} onChange={setTheme} options={[{ value: "auto", label: t("auto") }, { value: "light", label: t("light") }, { value: "dark", label: t("dark") }]} />
         </div>
+      </section>
+      <section className="section">
+        <header>
+          <h2>{t("Startup")}</h2>
+        </header>
+        <div className="row">
+          <span>{t("Start with Windows")}</span>
+          <Switch checked={autostart} label={t("Start with Windows")} disabled={!core} onChange={(on) => { setSendError(null); sendCommand("core", "autostart", on).catch((e) => setSendError(String(e))); }} />
+        </div>
+        {(sendError || core?.error) && <p className="problem" role="alert">{t("Could not change this: {why}", { why: sendError ?? core?.error ?? "" })}</p>}
       </section>
       <section className="section">
         <header>

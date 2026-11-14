@@ -6,6 +6,10 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 pub const PIPE_NAME: &str = r"\\.\pipe\sysvane-core";
+/// UI to core, one JSON `Command` per line. The core never answers on it: the result shows in the next snapshot.
+pub const COMMAND_PIPE_NAME: &str = r"\\.\pipe\sysvane-core-cmd";
+/// A command line longer than this is refused and its client dropped.
+pub const MAX_COMMAND_BYTES: usize = 512;
 pub const CORE_EXE: &str = "sysvane-core.exe";
 pub const UI_EXE: &str = "sysvane-ui.exe";
 /// The scheduled task that starts the core with administrator rights.
@@ -15,7 +19,7 @@ pub const FLYOUT_ARG: &str = "--flyout";
 
 /// Version of the pipe protocol: the snapshot and, later, the commands. Raise it when either changes
 /// shape. The UI refuses to talk to a core that reports another number.
-pub const PROTOCOL: u32 = 1;
+pub const PROTOCOL: u32 = 2;
 
 /// Time between snapshots. The UI keeps a fixed number of them, so its "2 minutes" labels depend on this.
 pub const TICK: Duration = Duration::from_secs(1);
@@ -35,6 +39,61 @@ pub struct Snapshot {
     pub temps: Vec<Temp>,
     /// The busiest ones, the most CPU first.
     pub processes: Vec<Proc>,
+    /// What the core controls: itself and, later, device modules.
+    pub devices: Vec<Device>,
+}
+
+/// Every device the core can be told to change. A command names one of these, never a free string.
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum DeviceId {
+    /// The core itself: settings that live in the core, such as starting with Windows.
+    Core,
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum ControlId {
+    Autostart,
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Debug)]
+#[serde(untagged)]
+pub enum ControlValue {
+    Bool(bool),
+    Int(i64),
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Debug)]
+#[serde(rename_all = "lowercase")]
+pub enum DeviceStatus {
+    Ok,
+    /// The last command failed or the module stopped answering; `Device::error` says why.
+    Failed,
+}
+
+#[derive(Serialize, Clone, PartialEq, Debug)]
+pub struct Device {
+    pub id: DeviceId,
+    pub status: DeviceStatus,
+    pub error: Option<String>,
+    pub controls: Vec<Control>,
+}
+
+#[derive(Serialize, Clone, PartialEq, Debug)]
+pub struct Control {
+    pub id: ControlId,
+    pub value: ControlValue,
+}
+
+/// One line on the command pipe. Unknown fields are refused, and so is another protocol number.
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct Command {
+    pub protocol: u32,
+    pub device: DeviceId,
+    pub control: ControlId,
+    pub value: ControlValue,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -261,6 +320,15 @@ mod tests {
                 exe: None,
                 cmd: String::new(),
             }],
+            devices: vec![Device {
+                id: DeviceId::Core,
+                status: DeviceStatus::Ok,
+                error: None,
+                controls: vec![Control {
+                    id: ControlId::Autostart,
+                    value: ControlValue::Bool(false),
+                }],
+            }],
         }
     }
 
@@ -300,8 +368,14 @@ mod tests {
             );
             let kind_matches = match v {
                 Value::Number(_) => ty.starts_with("number"),
-                Value::String(_) => ty.starts_with("string") || ty == "TempKind",
-                Value::Bool(_) => ty.starts_with("boolean"),
+                Value::String(_) => {
+                    ty.starts_with("string")
+                        || matches!(
+                            ty.as_str(),
+                            "TempKind" | "DeviceId" | "ControlId" | "DeviceStatus"
+                        )
+                }
+                Value::Bool(_) => ty.starts_with("boolean") || ty == "ControlValue",
                 Value::Array(_) => ty.ends_with("[]"),
                 Value::Object(_) => ty.starts_with(char::is_uppercase),
                 Value::Null => true,
@@ -333,8 +407,33 @@ mod tests {
             ("Gpu", &v["gpu"]),
             ("Temp", &v["temps"][0]),
             ("Proc", &v["processes"][0]),
+            ("Device", &v["devices"][0]),
+            ("Control", &v["devices"][0]["controls"][0]),
         ] {
             check(&ts, name, value);
+        }
+    }
+
+    #[test]
+    fn commands_are_validated_by_type() {
+        let ok = r#"{"protocol":2,"device":"core","control":"autostart","value":true}"#;
+        let c: Command = serde_json::from_str(ok).unwrap();
+        assert_eq!(
+            (c.device, c.control, c.value),
+            (
+                DeviceId::Core,
+                ControlId::Autostart,
+                ControlValue::Bool(true)
+            )
+        );
+        for bad in [
+            r#"{"protocol":2,"device":"core","control":"autostart","value":true,"path":"x"}"#,
+            r#"{"protocol":2,"device":"gpu","control":"autostart","value":true}"#,
+            r#"{"protocol":2,"device":"core","control":"format","value":true}"#,
+            r#"{"protocol":2,"device":"core","control":"autostart","value":"on"}"#,
+            r#"{"device":"core","control":"autostart","value":true}"#,
+        ] {
+            assert!(serde_json::from_str::<Command>(bad).is_err(), "{bad}");
         }
     }
 

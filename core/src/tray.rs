@@ -1,8 +1,9 @@
 //! Tray icon and its menu. Runs the Win32 message loop on the calling thread.
 
-use crate::install;
+use crate::devices::Devices;
 use std::ffi::OsStr;
 use std::process::Command;
+use std::sync::Arc;
 use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System};
 use sysvane_wire::{FLYOUT_ARG, UI_EXE};
 use tray_icon::menu::{CheckMenuItem, Menu, MenuEvent, MenuItem, PredefinedMenuItem};
@@ -99,14 +100,9 @@ fn export_diagnostics() -> Result<(), String> {
     Ok(())
 }
 
-pub fn run() {
+pub fn run(devices: Arc<Devices>) {
     let open = MenuItem::new("Open dashboard", true, None);
-    let auto = CheckMenuItem::new(
-        "Start with Windows",
-        true,
-        install::autostart_enabled(),
-        None,
-    );
+    let auto = CheckMenuItem::new("Start with Windows", true, devices.autostart(), None);
     let logs = MenuItem::new("Open logs folder", true, None);
     let diag = MenuItem::new("Export diagnostics to Desktop", true, None);
     let quit = MenuItem::new("Quit", true, None);
@@ -127,8 +123,8 @@ pub fn run() {
         if e.id == open_id {
             launch_ui(false);
         } else if e.id == auto_id {
-            // The check mark already flipped, so set the trigger to the opposite of what the task holds.
-            if let Err(err) = install::register(!install::autostart_enabled()) {
+            // The check mark already flipped, so set the trigger to the opposite of what the core holds.
+            if let Err(err) = devices.set_autostart(!devices.autostart()) {
                 crate::log::error(&format!("autostart change failed: {err}"));
             }
         } else if e.id == logs_id {

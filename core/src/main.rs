@@ -2,7 +2,9 @@
 #![windows_subsystem = "windows"]
 
 mod collector;
+mod commands;
 mod cputemp;
+mod devices;
 mod gpu;
 mod hub;
 mod install;
@@ -50,13 +52,19 @@ fn main() {
     log::init();
     log::info(concat!("core ", env!("CARGO_PKG_VERSION"), " started"));
     let hub = Arc::new(hub::Hub::default());
+    let devices = devices::Devices::start(install::autostart_enabled());
+    let d = devices.clone();
+    std::thread::spawn(move || commands::serve(d, sysvane_wire::COMMAND_PIPE_NAME));
     let h = hub.clone();
     std::thread::spawn(move || pipe::serve(h, sysvane_wire::PIPE_NAME));
+    let for_tray = devices.clone();
     std::thread::spawn(move || {
-        let make = || collector::Collector::new().expect("sysinfo cannot start on this system");
+        let make = || {
+            collector::Collector::new(devices.clone()).expect("sysinfo cannot start on this system")
+        };
         hub.run(sysvane_wire::TICK, make, |c, dt| {
             serde_json::to_string(&c.sample(dt)).expect("snapshot serializes")
         })
     });
-    tray::run();
+    tray::run(for_tray);
 }

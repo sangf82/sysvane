@@ -1,8 +1,8 @@
 # SysVane plan
 
-**Updated:** 2026-11-13
+**Updated:** 2026-11-14
 **Version:** `0.0.2` (beta); the tag `v0.0.2` is not cut yet. `1.0.0` when the app is stable on the owner's ASUS hardware, or handles universal devices well.
-**Status:** M0 and M1 done. `sysvane-core` samples CPU, RAM, disks, network, processes and the NVIDIA GPU (worker), reads CPU temperature through a core-owned worker (PawnIO), shows a tray icon, serves the data pipe (protocol 1) and writes rotating logs with a diagnostics export. It runs elevated from the scheduled task "SysVane Core", installed by an NSIS installer into `Program Files\SysVane`; "Start with Windows" and uninstall were tested on the owner's PC. `sysvane-ui` has Overview, Performance, Processes and a 320x480 flyout. Not built yet: auto update (M2), command pipe and module framework (M3), and every device module (DDC, LCD, RGB, fans). `modules/ddc/` holds only profiles and notes for the Rust port.
+**Status:** M0, M1 and M2 done (0.0.4 is the first self-updating release); M3 in progress. `sysvane-core` samples CPU, RAM, disks, network, processes and the NVIDIA GPU (worker), reads CPU temperature through a core-owned worker (PawnIO), shows a tray icon, serves the data pipe (protocol 1) and writes rotating logs with a diagnostics export. It runs elevated from the scheduled task "SysVane Core", installed by an NSIS installer into `Program Files\SysVane`; "Start with Windows" and uninstall were tested on the owner's PC. `sysvane-ui` has Overview, Performance, Processes and a 320x480 flyout. Not built yet: auto update (M2), command pipe and module framework (M3), and every device module (DDC, LCD, RGB, fans). `modules/ddc/` holds only profiles and notes for the Rust port.
 **Evidence:** [research notes](research/). RAM and timing numbers are targets unless marked measured.
 
 ## Decisions (grilling session, 2026-11-12)
@@ -92,8 +92,8 @@ Each milestone ends with something you can run and check. Order matters: M1 and 
 - Logging and the diagnostics pack; clean uninstall with the "delete data" option.
 - Done when: install, reboot, run, update by hand, uninstall leave no trace, and a normal process cannot overwrite the core exe.
 
-**M2 Auto update, beta channel (`0.0.3`) — code done 2026-11-14, release test left**
-- Built and signed locally (0.0.3 installer + .sig). Left: add the GitHub secret, push tag `v0.0.3`, then install 0.0.2 and watch it update to 0.0.3. The key has an empty password; back up `~/.sysvane/updater.key`.
+**M2 Auto update, beta channel (`0.0.3`, `0.0.4`) — done 2026-11-14**
+- Verified 2026-11-14: tag `v0.0.3` published a signed pre-release and `latest.json`; the installed 0.0.3 offered 0.0.4 and updated itself. The key has an empty password; back up `~/.sysvane/updater.key`.
 - Known limit: the installer replaces files in place, so a power cut mid-update can leave a broken install; reinstall fixes it.
 - Updater key pair; the private key stays off the repo and is backed up.
 - GitHub Actions: tag `vX.Y.Z` builds the installer, signs it, publishes a pre-release and `latest.json`.
@@ -101,7 +101,7 @@ Each milestone ends with something you can run and check. Order matters: M1 and 
 - Installer stops the core and any worker, replaces files, starts the core again. A failed update leaves the old version working.
 - Done when: a tag produces a release and your installed copy updates itself without uninstalling.
 
-**M3 Command channel and module framework (`0.0.4`)**
+**M3 Command channel and module framework (`0.0.5`)**
 - Command pipe with ACL, validation, protocol version.
 - Module registry (static list), per-module config and profile loader with validation and `schema`.
 - Watchdog, failed-module state shown in the UI, re-apply after sleep and device change.

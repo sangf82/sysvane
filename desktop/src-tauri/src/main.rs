@@ -7,7 +7,10 @@ use std::process::Command;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
-use sysvane_wire::{CORE_EXE, CORE_TASK, FLYOUT_ARG, PIPE_NAME};
+use sysvane_wire::{
+    COMMAND_PIPE_NAME, CORE_EXE, CORE_TASK, Command as CoreCommand, ControlId, ControlValue,
+    DeviceId, FLYOUT_ARG, PIPE_NAME, PROTOCOL,
+};
 use tauri::{
     AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, State, WebviewWindow, WindowEvent,
 };
@@ -32,6 +35,11 @@ fn spawn_core() -> &'static str {
 }
 
 fn start() -> &'static str {
+    // A debug build runs the core built next to it. The task points at the installed copy, so asking it
+    // would put the old core behind the new window.
+    #[cfg(debug_assertions)]
+    let task: std::io::Result<std::process::ExitStatus> = Err(std::io::ErrorKind::Other.into());
+    #[cfg(not(debug_assertions))]
     let task = Command::new("schtasks")
         .args(["/run", "/tn", CORE_TASK])
         .creation_flags(CREATE_NO_WINDOW)
@@ -44,6 +52,8 @@ fn start() -> &'static str {
         .map(|p| p.with_file_name(CORE_EXE))
         .map(|core| Command::new(core).spawn())
     {
+        // A debug build is expected to run without the task, so it is not a problem there.
+        Some(Ok(_)) if cfg!(debug_assertions) => "ok",
         Some(Ok(_)) => "unelevated",
         _ => "failed",
     }
@@ -109,6 +119,25 @@ fn restart_core_elevated() -> &'static str {
         .status();
     std::thread::sleep(Duration::from_secs(1));
     spawn_core()
+}
+
+/// One command for the core. The webview can only name a device, a control and a value of the wire types;
+/// the core checks them again. The core answers in its next snapshot, not here.
+#[tauri::command]
+fn send_command(device: DeviceId, control: ControlId, value: ControlValue) -> Result<(), String> {
+    use std::io::Write;
+    let line = serde_json::to_string(&CoreCommand {
+        protocol: PROTOCOL,
+        device,
+        control,
+        value,
+    })
+    .map_err(|e| e.to_string())?;
+    let mut pipe = File::options()
+        .write(true)
+        .open(COMMAND_PIPE_NAME)
+        .map_err(|e| e.to_string())?;
+    writeln!(pipe, "{line}").map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -180,6 +209,7 @@ fn main() {
             open_dashboard,
             start_core,
             core_start_status,
+            send_command,
             restart_core_elevated
         ])
         .setup(move |app| {

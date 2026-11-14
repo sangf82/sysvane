@@ -1,8 +1,10 @@
 //! Samples the whole system once per tick into a wire `Snapshot`.
 
+use crate::devices::Devices;
 use crate::mode::Mode;
 use crate::perf::{Perf, PerfSample, SysTotals, sys_totals};
 use crate::worker::Worker;
+use std::sync::Arc;
 use sysinfo::{
     Components, DiskKind, Disks, Networks, ProcessRefreshKind, ProcessesToUpdate, System,
     UpdateKind, Users,
@@ -54,10 +56,11 @@ pub struct Collector {
     gpu: Option<Worker<Gpu>>,
     cpu_temp: Option<Worker<Vec<Temp>>>,
     perf: Option<Perf>,
+    devices: Arc<Devices>,
 }
 
 impl Collector {
-    pub fn new() -> Result<Self, sysinfo::Error> {
+    pub fn new(devices: Arc<Devices>) -> Result<Self, sysinfo::Error> {
         let mut sys = System::new()?;
         // Usage needs two readings, so take the first one now.
         sys.refresh_cpu_usage();
@@ -72,6 +75,7 @@ impl Collector {
             gpu: Worker::start(Mode::GpuWorker),
             cpu_temp: Worker::start(Mode::TempWorker),
             perf: Perf::new(logical),
+            devices,
         })
     }
 
@@ -90,6 +94,7 @@ impl Collector {
             gpu: self.gpu.as_mut().and_then(Worker::latest),
             temps: self.temps(),
             processes: self.processes(elapsed_s),
+            devices: self.devices.snapshot(),
         }
     }
 

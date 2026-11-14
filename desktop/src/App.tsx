@@ -154,7 +154,7 @@ export default function App() {
             <div className={st.connected ? "" : "stale"}>
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div key={page} initial={{ opacity: 0 }} animate={{ opacity: 1, transition: transition.panelIn }} exit={{ opacity: 0, transition: transition.panelOut }}>
-                  {page === "overview" ? <Overview s={s} h={st.hist} open={open} /> : page === "performance" ? <Performance s={s} h={st.hist} sel={resource} setSel={setResource} /> : page === "processes" ? <Processes list={s.processes} /> : <Settings update={update} recheck={recheck} />}
+                  {page === "overview" ? <Overview s={s} h={st.hist} open={open} /> : page === "performance" ? <Performance s={s} h={st.hist} sel={resource} setSel={setResource} /> : page === "processes" ? <Processes list={s.processes} /> : <Settings update={update} recheck={recheck} devices={s.devices} />}
                 </motion.div>
               </AnimatePresence>
             </div>

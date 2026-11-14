@@ -234,3 +234,9 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .al-body .notes { max-height: 40vh; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
 .al-actions { justify-content: flex-end; }
 .al-actions button:not(.primary) { background: none; border: 1px solid var(--hairline-strong); border-radius: var(--r-sm); padding: var(--sm) var(--lg); font-size: 14px; cursor: pointer; }
+.switch { position: relative; width: 36px; height: 20px; padding: 2px; border: 1px solid var(--hairline-strong); border-radius: 999px; background: var(--hairline-cool); cursor: pointer; display: inline-flex; align-items: center; }
+.switch[data-checked] { background: var(--primary); border-color: var(--primary); justify-content: flex-end; }
+.switch[data-disabled] { opacity: 0.5; cursor: default; }
+.switch-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--ink); }
+.switch[data-checked] .switch-thumb { background: var(--on-primary); }
+.problem { color: var(--ink); border-left: 2px solid var(--hot); padding-left: var(--sm); }

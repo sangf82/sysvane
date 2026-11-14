@@ -25,15 +25,17 @@ use windows_sys::Win32::System::Pipes::{
 use windows_sys::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 
 /// Security attributes for a pipe: read for the current user, full access for administrators and SYSTEM.
-struct Access {
+pub struct Access {
     descriptor: PSECURITY_DESCRIPTOR,
-    attributes: SECURITY_ATTRIBUTES,
+    pub attributes: SECURITY_ATTRIBUTES,
 }
 
 impl Access {
-    fn current_user() -> Option<Self> {
+    /// `rights` is the SDDL right string for the current user: `GR` to read the data pipe, `GRGW` to write commands (a client also needs to read attributes to open a pipe).
+    /// The Medium label lets the UI, a normal-rights process, write to a pipe made by the elevated core.
+    pub fn current_user(rights: &str) -> Option<Self> {
         let sddl = wide(&format!(
-            "D:(A;;GA;;;SY)(A;;GA;;;BA)(A;;GR;;;{})",
+            "D:(A;;GA;;;SY)(A;;GA;;;BA)(A;;{rights};;;{})S:(ML;;NW;;;ME)",
             current_user_sid()?
         ));
         let mut descriptor = std::ptr::null_mut();
@@ -65,7 +67,7 @@ impl Drop for Access {
 }
 
 /// The SID of the user this process runs as, in string form (`S-1-5-21-...`).
-fn current_user_sid() -> Option<String> {
+pub fn current_user_sid() -> Option<String> {
     // SAFETY: each buffer is sized by the preceding call; handles and strings are freed on every path.
     unsafe {
         let mut token = std::ptr::null_mut();
@@ -99,7 +101,7 @@ fn current_user_sid() -> Option<String> {
 pub fn serve(hub: Arc<Hub>, pipe_name: &str) -> ! {
     let name = wide(pipe_name);
     let access = loop {
-        match Access::current_user() {
+        match Access::current_user("GR") {
             Some(access) => break access,
             None => {
                 crate::log::error("cannot build the pipe access rules; not serving");

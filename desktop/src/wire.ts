@@ -3,8 +3,16 @@
 
 export type TempKind = "cpu" | "ccd" | "sensor";
 
+export type DeviceId = "core";
+
+export type ControlId = "autostart";
+
+export type ControlValue = boolean | number;
+
+export type DeviceStatus = "ok" | "failed";
+
 // Protocol version, as `PROTOCOL` in the wire crate.
-export const PROTOCOL = 1;
+export const PROTOCOL = 2;
 
 // Seconds between snapshots, as TICK in the wire crate.
 export const TICK_S = 1;
@@ -109,6 +117,18 @@ export type Proc = {
   cmd: string;
 };
 
+export type Control = {
+  id: ControlId;
+  value: ControlValue;
+};
+
+export type Device = {
+  id: DeviceId;
+  status: DeviceStatus;
+  error: string | null;
+  controls: Control[];
+};
+
 export type Snapshot = {
   protocol: number;
   host: Host;
@@ -119,4 +139,5 @@ export type Snapshot = {
   gpu: Gpu | null;
   temps: Temp[];
   processes: Proc[];
+  devices: Device[];
 };
