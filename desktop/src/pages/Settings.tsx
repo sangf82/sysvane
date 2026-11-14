@@ -2,19 +2,18 @@ import { getVersion } from "@tauri-apps/api/app";
 import { isTauri } from "@tauri-apps/api/core";
 import type { Update } from "@tauri-apps/plugin-updater";
 import { useEffect, useState } from "react";
-import { resolved, t, useLang } from "../i18n";
-import { useTheme } from "../theme";
+import { type Lang, t, useLang } from "../i18n";
+import { type Theme, useTheme } from "../theme";
 
 /** What the user can set from the window. Startup, fans and other core-owned settings arrive with the command channel (M3). */
 export function Settings({ update, recheck }: { update: Update | null; recheck: () => Promise<Update | null> }) {
   const [version, setVersion] = useState("");
   const [checked, setChecked] = useState<"idle" | "busy" | "none">("idle");
-  const [theme, cycleTheme] = useTheme();
-  const [lang, cycleLang] = useLang();
+  const [theme, setTheme] = useTheme();
+  const [lang, setLang] = useLang();
   useEffect(() => {
     if (isTauri()) getVersion().then(setVersion);
   }, []);
-  const langName = lang === "auto" ? t("auto") : lang === "en" ? t("English") : t("Vietnamese");
   return (
     <div className="page">
       <h1>{t("Settings")}</h1>
@@ -46,15 +45,19 @@ export function Settings({ update, recheck }: { update: Update | null; recheck: 
         </header>
         <div className="row">
           <span>{t("Language")}</span>
-          <button className="theme" onClick={cycleLang} aria-label={t("Language: {mode}", { mode: langName })}>
-            {langName} ({resolved().toUpperCase()})
-          </button>
+          <select className="select" value={lang} onChange={(e) => setLang(e.target.value as Lang)}>
+            <option value="auto">{t("auto")}</option>
+            <option value="en">{t("English")}</option>
+            <option value="vi">{t("Vietnamese")}</option>
+          </select>
         </div>
         <div className="row">
           <span>{t("Theme")}</span>
-          <button className="theme" onClick={cycleTheme} aria-label={t("Theme: {mode}", { mode: t(theme) })}>
-            {t(theme)}
-          </button>
+          <select className="select" value={theme} onChange={(e) => setTheme(e.target.value as Theme)}>
+            <option value="auto">{t("auto")}</option>
+            <option value="light">{t("light")}</option>
+            <option value="dark">{t("dark")}</option>
+          </select>
         </div>
       </section>
       <section className="section">

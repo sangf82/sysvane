@@ -23,7 +23,6 @@ const NAV: { page: Page; label: Msg; icon: IconName }[] = [
   { page: "overview", label: "Overview", icon: "overview" },
   { page: "performance", label: "Performance", icon: "performance" },
   { page: "processes", label: "Processes", icon: "processes" },
-  { page: "settings", label: "Settings", icon: "settings" },
 ];
 
 function Waiting({ connected }: { connected: boolean }) {
@@ -49,8 +48,8 @@ function Waiting({ connected }: { connected: boolean }) {
 
 export default function App() {
   const st = useSyncExternalStore(subscribe, getState);
-  const [theme, cycleTheme] = useTheme();
-  const [lang, cycleLang] = useLang();
+  useTheme();
+  const [lang] = useLang();
   const [flyout, setFlyout] = useState(false);
   const [page, setPage] = useState<Page>("overview");
   const [resource, setResource] = useState(RES.cpu);
@@ -76,8 +75,6 @@ export default function App() {
     setResource(id);
     setPage("performance");
   };
-  const themeLabel = t("Theme: {mode}", { mode: t(theme) });
-  const langLabel = t("Language: {mode}", { mode: lang === "auto" ? t("auto") : lang === "en" ? t("English") : t("Vietnamese") });
   return (
     <div className="shell">
       <IconPathStyle />
@@ -97,31 +94,25 @@ export default function App() {
             </AnimateIcon>
           ))}
         </nav>
-        <div className="side-foot">
-          <span className="status" role="status">
-            <i className={`dot ${st.connected ? "on" : ""}`} />
-            <span className="label">{st.connected ? t("Core connected") : t("Core disconnected")}</span>
-          </span>
-          <button className="theme" onClick={cycleLang} aria-label={langLabel} title={langLabel}>
-            <span className="label">{langLabel}</span>
-            <span className="short" aria-hidden>
-              {resolved().toUpperCase()}
-            </span>
+        <AnimateIcon animateOnHover asChild>
+          <button className={`nav settings ${page === "settings" ? "on" : ""}`} aria-current={page === "settings" ? "page" : undefined} aria-label={t("Settings")} title={t("Settings")} onClick={() => setPage("settings")}>
+            {page === "settings" && <motion.span layoutId="nav-glide" className="nav-glide" transition={spring.highlight} aria-hidden />}
+            <Icon name="settings" size={18} />
+            <span className="label">{t("Settings")}</span>
           </button>
-          <button className="theme" onClick={cycleTheme} aria-label={themeLabel} title={t("Theme: auto follows Windows")}>
-            <span className="label">{themeLabel}</span>
-            <span className="short" aria-hidden>
-              {theme[0].toUpperCase()}
-            </span>
-          </button>
-        </div>
+        </AnimateIcon>
       </aside>
       <main className="content">
-        {update && (
-          <>
+        <div className="corner">
+          {!st.connected && <span className="alert-chip" role="alert">{t("Core disconnected")}</span>}
+          {update && (
             <button className="update-chip" onClick={() => notes.current?.showModal()}>
               {t("Update {v}", { v: update.version })}
             </button>
+          )}
+        </div>
+        {update && (
+          <>
             <dialog ref={notes} className="update-dialog">
               <h2>{t("SysVane {v} is available.", { v: update.version })}</h2>
               <p className="notes">{(update.body ?? "").split("**").join("") || t("No changelog.")}</p>
@@ -138,13 +129,6 @@ export default function App() {
           <Waiting connected={st.connected} />
         ) : (
           <>
-            <AnimatePresence initial={false}>
-              {!st.connected && (
-                <motion.div key="banner" className="banner" role="alert" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={transition.reveal}>
-                  {t("The core stopped answering. Showing the last reading; reconnecting.")}
-                </motion.div>
-              )}
-            </AnimatePresence>
             <div className={st.connected ? "" : "stale"}>
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div key={page} initial={{ opacity: 0 }} animate={{ opacity: 1, transition: transition.panelIn }} exit={{ opacity: 0, transition: transition.panelOut }}>

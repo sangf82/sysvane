@@ -190,9 +190,7 @@ export function t(en: Msg, vars?: Record<string, string | number>): string {
   return vars ? text.replace(/\{(\w+)\}/g, (_, k: string) => String(vars[k] ?? `{${k}}`)) : text;
 }
 
-const NEXT: Record<Lang, Lang> = { auto: "en", en: "vi", vi: "auto" };
-
-export function useLang(): [Lang, () => void] {
+export function useLang(): [Lang, (l: Lang) => void] {
   const lang = useSyncExternalStore(
     (f) => {
       subs.add(f);
@@ -200,10 +198,10 @@ export function useLang(): [Lang, () => void] {
     },
     () => pref,
   );
-  const cycle = () => {
-    pref = NEXT[pref];
+  const set = (l: Lang) => {
+    pref = l;
     localStorage.setItem(KEY, pref);
     subs.forEach((f) => f());
   };
-  return [lang, cycle];
+  return [lang, set];
 }
