@@ -81,13 +81,13 @@ Each milestone ends with something you can run and check. Order matters: M1 and 
 - Done: sensors, tray, pipe, dashboard, flyout, CPU temperature helper, wire crate.
 - Measured 2026-11-13, see Measured below. Done.
 
-**M1 Install, privilege, lifecycle (`0.0.2`) — done 2026-11-13**
+**M1 Install, privilege, lifecycle (`0.0.2`) — done 2026-11-14**
 - Verified 2026-11-13 on the owner's PC: silent install, in-place reinstall as manual update, core elevated from the task, exe not writable by Users, clean uninstall (default No on data), reboot with "Start with Windows". Version is `0.0.2`; the tag is not cut.
-- Accepted by the owner with two gaps: PawnIO redistribution licence unchecked; uninstall "delete data = Yes" and "remove PawnIO we installed" branches read from code only, never run.
+- No gaps left. PawnIO licence checked 2026-11-14 (see below); the uninstall "delete data = Yes" and "remove PawnIO we installed" branches were run and verified 2026-11-14 (fixed: ProgramData path was never deleted).
 - NSIS installer into `Program Files`, shipping `sysvane-core.exe` next to the UI.
 - Core runs as administrator through a scheduled task; remove the separate temperature helper and its task.
 - "Start with Windows" switch (default off) creating and deleting the logon task.
-- PawnIO: the installer detects it. If missing, install it and record that SysVane did so; if already present, skip the install and never remove it. The uninstaller removes PawnIO only when SysVane installed it. Check the PawnIO licence for redistribution before shipping.
+- PawnIO: the installer detects it. If missing, install it and record that SysVane did so; if already present, skip the install and never remove it. The uninstaller removes PawnIO only when SysVane installed it. Licence checked 2026-11-14: driver GPL-2.0, modules LGPL-2.1, PawnIO.Setup has no licence file and pawnio.eu says only "(c) namazso, all rights reserved" for the official signed build. SysVane downloads the official setup at install time and never bundles it, so no redistribution happens; keep it that way. The shipped AMDFamily17.bin is built from an LGPL-2.1 module: keep core/pawnio/COPYING and link the source in the app About text.
 - Data pipe ACL for the current user; protocol version in snapshot and UI mismatch message.
 - Logging and the diagnostics pack; clean uninstall with the "delete data" option.
 - Done when: install, reboot, run, update by hand, uninstall leave no trace, and a normal process cannot overwrite the core exe.
@@ -150,7 +150,7 @@ Until M4 lands SysVane cannot control monitors, including the calibration profil
 ## Open questions
 
 Ask the owner before starting the milestone named.
-- M1 (done): the installer installs PawnIO when missing and skips it when present. Still to check before a public release: its redistribution licence.
+- M1 (done): the installer installs PawnIO when missing and skips it when present. Licence: download-at-install only, never bundle the setup exe.
 - M2: decided: public repository, so the updater needs no token.
 - M5: how the Levita Vision talks over USB, and which built-in themes to ship.
 - M7: which Super I/O chip the motherboard uses, and which headers the fans use.

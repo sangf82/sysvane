@@ -50,6 +50,7 @@
 
 !macro NSIS_HOOK_POSTUNINSTALL
   DeleteRegKey HKLM "Software\SysVane"
-  MessageBox MB_YESNO|MB_ICONQUESTION "Also delete SysVane settings and logs?" /SD IDNO IDNO +2
-    RMDir /r "$COMMONAPPDATA\SysVane"
+  MessageBox MB_YESNO|MB_ICONQUESTION "Also delete SysVane settings and logs?" /SD IDNO IDNO +3
+    RMDir /r "$%ProgramData%\SysVane"
+    RMDir /r "$LOCALAPPDATA\com.sysvane.app"
 !macroend
