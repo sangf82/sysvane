@@ -4,7 +4,7 @@ import { t } from "./i18n";
 
 /** One confirm dialog for the whole app: Animate UI's Base UI alert dialog, styled in styles.css.
  *  Without `confirm` it is a notice with a single OK button. */
-export function Alert({ open, onClose, title, children, confirm }: { open: boolean; onClose: () => void; title: string; children: ReactNode; confirm?: { label: string; busy: boolean; onClick: () => void } }) {
+export function Alert({ open, onClose, title, children, confirm, closeLabel }: { open: boolean; onClose: () => void; title: string; children: ReactNode; confirm?: { label: string; busy: boolean; onClick: () => void }; closeLabel?: string }) {
   return (
     <AlertDialog.Root open={open} onOpenChange={(o) => !o && !confirm?.busy && onClose()}>
       <AlertDialog.Portal>
@@ -16,7 +16,7 @@ export function Alert({ open, onClose, title, children, confirm }: { open: boole
               {children}
             </AlertDialog.Description>
             <div className="row al-actions">
-              <AlertDialog.Close disabled={confirm?.busy}>{confirm ? t("Later") : t("OK")}</AlertDialog.Close>
+              <AlertDialog.Close disabled={confirm?.busy}>{closeLabel ?? (confirm ? t("Later") : t("OK"))}</AlertDialog.Close>
               {confirm && (
                 <button className="primary" disabled={confirm.busy} onClick={confirm.onClick}>
                   {confirm.label}

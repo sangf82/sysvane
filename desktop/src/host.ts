@@ -11,6 +11,7 @@ export const isFlyout = () => call("is_flyout", false);
 export const openDashboard = () => call("open_dashboard", undefined);
 export type CoreStart = "ok" | "unelevated" | "failed";
 export const coreStartStatus = () => call<CoreStart>("core_start_status", "ok");
+export const restartCoreElevated = () => call<CoreStart>("restart_core_elevated", "ok");
 export const startCore = () => call<CoreStart>("start_core", "ok");
 
 export function onSnapshot(f: (s: Snapshot) => void) {

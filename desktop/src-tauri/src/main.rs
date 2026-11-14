@@ -79,6 +79,38 @@ fn start_core() -> &'static str {
     spawn_core()
 }
 
+/// Restarts the core with administrator rights after the user accepts the Windows prompt: an elevated
+/// PowerShell enables the scheduled task (or registers it when it is missing), then the unelevated core
+/// is stopped and the task starts the elevated one. Nothing here takes a value from the webview.
+#[tauri::command]
+fn restart_core_elevated() -> &'static str {
+    let core = std::env::current_exe()
+        .ok()
+        .map(|p| p.with_file_name(CORE_EXE))
+        .map(|p| p.display().to_string().replace('\'', "''''"))
+        .unwrap_or_default();
+    let inner = format!(
+        "schtasks /query /tn ''{CORE_TASK}'' *> $null; if ($LASTEXITCODE -eq 0) {{ schtasks /change /tn ''{CORE_TASK}'' /enable }} else {{ & ''{core}'' --register-task }}"
+    );
+    let outer = format!(
+        "Start-Process powershell -Verb RunAs -Wait -WindowStyle Hidden -ArgumentList '-NoProfile','-Command','{inner}'"
+    );
+    let approved = Command::new("powershell")
+        .args(["-NoProfile", "-Command", &outer])
+        .creation_flags(CREATE_NO_WINDOW)
+        .status()
+        .is_ok_and(|s| s.success());
+    if !approved {
+        return "unelevated";
+    }
+    let _ = Command::new("taskkill")
+        .args(["/F", "/IM", CORE_EXE])
+        .creation_flags(CREATE_NO_WINDOW)
+        .status();
+    std::thread::sleep(Duration::from_secs(1));
+    spawn_core()
+}
+
 #[tauri::command]
 fn core_start_status() -> &'static str {
     *CORE_START.lock().unwrap()
@@ -147,7 +179,8 @@ fn main() {
             is_flyout,
             open_dashboard,
             start_core,
-            core_start_status
+            core_start_status,
+            restart_core_elevated
         ])
         .setup(move |app| {
             let handle = app.handle().clone();

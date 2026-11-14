@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Flyout } from "./Flyout";
 import { Alert } from "./Alert";
-import { type CoreStart, coreStartStatus, isFlyout, startCore } from "./host";
+import { type CoreStart, coreStartStatus, isFlyout, restartCoreElevated, startCore } from "./host";
 import { type Msg, resolved, t, useLang } from "./i18n";
 import { RES } from "./metrics";
 import { Overview } from "./pages/Overview";
@@ -59,6 +59,7 @@ export default function App() {
   const [notesOpen, setNotesOpen] = useState(false);
   const [coreProblem, setCoreProblem] = useState<CoreStart>("ok");
   const [problemSeen, setProblemSeen] = useState(false);
+  const [elevating, setElevating] = useState(false);
   const restarted = (r: CoreStart) => {
     setCoreProblem(r);
     setProblemSeen(false);
@@ -137,8 +138,14 @@ export default function App() {
             <p className="notes">{(update.body ?? "").split("**").join("") || t("No changelog.")}</p>
           </Alert>
         )}
-        <Alert open={coreProblem !== "ok" && !problemSeen} onClose={() => setProblemSeen(true)} title={coreProblem === "failed" ? t("The background program did not start") : t("Administrator rights are missing")}>
-          <p>{coreProblem === "failed" ? t("sysvane-core.exe could not be started. Reinstall SysVane, or check that the file is next to sysvane-ui.exe.") : t("The background program started without administrator rights, so CPU temperature and other hardware readings stay off. Reinstall SysVane to register its scheduled task, which starts the program with the rights it needs.")}</p>
+        <Alert
+          open={coreProblem !== "ok" && !problemSeen}
+          onClose={() => setProblemSeen(true)}
+          title={coreProblem === "failed" ? t("The background program did not start") : t("Administrator rights are missing")}
+          closeLabel={coreProblem === "unelevated" ? t("Not now") : undefined}
+          confirm={coreProblem === "unelevated" ? { label: elevating ? t("Restarting…") : t("Restart as administrator"), busy: elevating, onClick: () => { setElevating(true); restartCoreElevated().then(setCoreProblem).finally(() => setElevating(false)); } } : undefined}
+        >
+          <p>{coreProblem === "failed" ? t("sysvane-core.exe could not be started. Reinstall SysVane, or check that the file is next to sysvane-ui.exe.") : t("The background program started without administrator rights, so CPU temperature and other hardware readings stay off. SysVane can restart it with the rights it needs; Windows will ask you to allow it.")}</p>
         </Alert>
         {!s ? (
           <Waiting connected={st.connected} onStart={restarted} />
