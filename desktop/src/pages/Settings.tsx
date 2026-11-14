@@ -2,8 +2,9 @@ import { getVersion } from "@tauri-apps/api/app";
 import { isTauri } from "@tauri-apps/api/core";
 import type { Update } from "@tauri-apps/plugin-updater";
 import { useEffect, useState } from "react";
-import { type Lang, t, useLang } from "../i18n";
-import { type Theme, useTheme } from "../theme";
+import { Dropdown } from "../Dropdown";
+import { t, useLang } from "../i18n";
+import { useTheme } from "../theme";
 
 /** What the user can set from the window. Startup, fans and other core-owned settings arrive with the command channel (M3). */
 export function Settings({ update, recheck }: { update: Update | null; recheck: () => Promise<Update | null> }) {
@@ -45,19 +46,11 @@ export function Settings({ update, recheck }: { update: Update | null; recheck: 
         </header>
         <div className="row">
           <span>{t("Language")}</span>
-          <select className="select" value={lang} onChange={(e) => setLang(e.target.value as Lang)}>
-            <option value="auto">{t("auto")}</option>
-            <option value="en">{t("English")}</option>
-            <option value="vi">{t("Vietnamese")}</option>
-          </select>
+          <Dropdown label={t("Language")} value={lang} onChange={setLang} options={[{ value: "auto", label: t("auto") }, { value: "en", label: t("English") }, { value: "vi", label: t("Vietnamese") }]} />
         </div>
         <div className="row">
           <span>{t("Theme")}</span>
-          <select className="select" value={theme} onChange={(e) => setTheme(e.target.value as Theme)}>
-            <option value="auto">{t("auto")}</option>
-            <option value="light">{t("light")}</option>
-            <option value="dark">{t("dark")}</option>
-          </select>
+          <Dropdown label={t("Theme")} value={theme} onChange={setTheme} options={[{ value: "auto", label: t("auto") }, { value: "light", label: t("light") }, { value: "dark", label: t("dark") }]} />
         </div>
       </section>
       <section className="section">
