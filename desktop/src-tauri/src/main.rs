@@ -121,6 +121,7 @@ fn place_flyout(app: &AppHandle, win: &WebviewWindow) {
 fn main() {
     let flyout = std::env::args().any(|a| a == FLYOUT_ARG);
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(Flyout(flyout))
         .invoke_handler(tauri::generate_handler![
             is_flyout,

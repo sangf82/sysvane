@@ -10,6 +10,7 @@ import { Overview } from "./pages/Overview";
 import { Performance } from "./pages/Performance";
 import { Processes } from "./pages/Processes";
 import { getState, subscribe } from "./store";
+import { install, useUpdate } from "./update";
 import { useTheme } from "./theme";
 import { PROTOCOL } from "./wire";
 import { Icon, Logo, type IconName } from "./ui";
@@ -51,6 +52,8 @@ export default function App() {
   const [flyout, setFlyout] = useState(false);
   const [page, setPage] = useState<Page>("overview");
   const [resource, setResource] = useState(RES.cpu);
+  const update = useUpdate();
+  const [installing, setInstalling] = useState(false);
   useEffect(() => {
     isFlyout().then(setFlyout);
   }, []);
@@ -115,6 +118,14 @@ export default function App() {
           <Waiting connected={st.connected} />
         ) : (
           <>
+            {update && (
+              <div className="banner" role="status">
+                {t("SysVane {v} is available.", { v: update.version })} {update.body && <span className="muted">{update.body}</span>}{" "}
+                <button className="primary" disabled={installing} onClick={() => { setInstalling(true); install(update).catch(() => setInstalling(false)); }}>
+                  {installing ? t("Installing…") : t("Install and restart")}
+                </button>
+              </div>
+            )}
             <AnimatePresence initial={false}>
               {!st.connected && (
                 <motion.div key="banner" className="banner" role="alert" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={transition.reveal}>

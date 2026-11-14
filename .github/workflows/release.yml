@@ -1,7 +1,8 @@
 name: Release
 
 # Tag vX.Y.Z (matching Cargo.toml) -> tests, NSIS installer, GitHub pre-release.
-# M2 adds updater signing and latest.json here.
+# The installer is signed for the updater (secret TAURI_SIGNING_PRIVATE_KEY); latest.json goes to the fixed
+# release tag `updates`, because GitHub's "latest" link skips pre-releases.
 on:
   push:
     tags: ['v*']
@@ -36,6 +37,8 @@ jobs:
 
       - name: Build installer
         working-directory: desktop
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
           npm ci
           npx tauri build
@@ -48,3 +51,12 @@ jobs:
           $setup = Get-ChildItem target/release/bundle/nsis/*-setup.exe | Select-Object -First 1
           if (-not $setup) { throw 'NSIS installer not found' }
           gh release create $env:GITHUB_REF_NAME $setup.FullName --prerelease --generate-notes --title $env:GITHUB_REF_NAME
+          $sig = Get-Content "$($setup.FullName).sig" -Raw
+          $v = $env:GITHUB_REF_NAME.TrimStart('v')
+          $url = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$env:GITHUB_REF_NAME/$($setup.Name)"
+          $notes = gh release view $env:GITHUB_REF_NAME --json body --jq .body
+          $json = @{ version = $v; notes = $notes; pub_date = (Get-Date).ToUniversalTime().ToString('o'); platforms = @{ 'windows-x86_64' = @{ signature = $sig.Trim(); url = $url } } } | ConvertTo-Json -Depth 5
+          Set-Content latest.json $json -Encoding utf8
+          gh release view updates *> $null
+          if ($LASTEXITCODE -ne 0) { gh release create updates --title updates --notes 'Updater manifest, replaced on every release.' }
+          gh release upload updates latest.json --clobber

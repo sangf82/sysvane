@@ -27,14 +27,35 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
-    "resources": { "../../target/release/sysvane-core.exe": "sysvane-core.exe" },
-    "windows": { "nsis": { "installMode": "perMachine", "installerHooks": "installer-hooks.nsh" } },
+    "targets": [
+      "nsis"
+    ],
+    "resources": {
+      "../../target/release/sysvane-core.exe": "sysvane-core.exe"
+    },
+    "windows": {
+      "nsis": {
+        "installMode": "perMachine",
+        "installerHooks": "installer-hooks.nsh"
+      }
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.ico"
-    ]
+    ],
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEUwOENGQkIzMkI3N0Y3RkIKUldUNzkzY3JzL3VNNEd5NjFQUEQyUHBINXI3T2lHV3JZMHlUenZXd2F0TXZ6eDJRbSt3WGRwV3UK",
+      "endpoints": [
+        "https://github.com/sangf82/sysvane/releases/download/updates/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

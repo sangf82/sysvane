@@ -76,7 +76,7 @@ Use `agent-desktop`, a CLI that reads and operates apps through Windows UI Autom
 - `rust-core` agent (`.claude/agents/`): `core/`, `wire/`, `modules/`; loads `rust-best-practices`; runs fmt, clippy `-D warnings` and tests before it reports.
 - `frontend-ui` agent: `desktop/`, `DESIGN.md`, `branding/`; loads `impeccable`, `unslop`, `animate-ui`, `agent-desktop`; runs `npm run build`.
 - `.claude/hooks/lint-on-stop.ps1` runs at Stop: fmt + clippy if Rust changed, `tsc --noEmit` if `desktop/src` changed; failure blocks the stop once.
-- CI: `.github/workflows/ci.yml` on push to `main` and PRs. Release: `powershell -NoProfile -File scripts\bump-version.ps1 X.Y.Z`, commit, `git tag vX.Y.Z`, `git push --tags`; `release.yml` checks the tag equals the Cargo and package versions, builds the NSIS installer and publishes a pre-release. Updater signing and `latest.json` arrive in M2.
+- CI: `.github/workflows/ci.yml` on push to `main` and PRs. Release: `powershell -NoProfile -File scripts\bump-version.ps1 X.Y.Z`, commit, `git tag vX.Y.Z`, `git push --tags`; `release.yml` checks the tag equals the Cargo and package versions, builds the NSIS installer and publishes a pre-release. The installer is signed for the updater: set `TAURI_SIGNING_PRIVATE_KEY` (path or text of the key; local key at `~/.sysvane/updater.key`, never in the repo) before `npm run tauri build`, and keep the same value in the GitHub secret of that name. `latest.json` lives on the fixed release tag `updates`.
 
 ## Conventions
 

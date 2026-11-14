@@ -5,6 +5,9 @@ export type Lang = "auto" | "en" | "vi";
 /** English is the source text and the key. `t` only takes a string listed here, so a missing translation fails the build. */
 const VI = {
   Overview: "Tổng quan",
+  "SysVane {v} is available.": "Đã có SysVane {v}.",
+  "Install and restart": "Cài và khởi động lại",
+  "Installing…": "Đang cài…",
   Performance: "Hiệu năng",
   Processes: "Tiến trình",
   Pages: "Trang",

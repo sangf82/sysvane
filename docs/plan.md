@@ -92,7 +92,9 @@ Each milestone ends with something you can run and check. Order matters: M1 and 
 - Logging and the diagnostics pack; clean uninstall with the "delete data" option.
 - Done when: install, reboot, run, update by hand, uninstall leave no trace, and a normal process cannot overwrite the core exe.
 
-**M2 Auto update, beta channel (`0.0.3`)**
+**M2 Auto update, beta channel (`0.0.3`) — code done 2026-11-14, release test left**
+- Built and signed locally (0.0.3 installer + .sig). Left: add the GitHub secret, push tag `v0.0.3`, then install 0.0.2 and watch it update to 0.0.3. The key has an empty password; back up `~/.sysvane/updater.key`.
+- Known limit: the installer replaces files in place, so a power cut mid-update can leave a broken install; reinstall fixes it.
 - Updater key pair; the private key stays off the repo and is backed up.
 - GitHub Actions: tag `vX.Y.Z` builds the installer, signs it, publishes a pre-release and `latest.json`.
 - UI checks at dashboard start and daily while open, shows version and notes, asks before installing.

@@ -34,6 +34,11 @@
   ; The scheduled task starts the core with administrator rights. "Start with Windows" stays off.
   nsExec::ExecToLog '"$INSTDIR\sysvane-core.exe" --register-task'
   Pop $0
+  ; An update (the UI passes /UPDATE) brings the core back; a fresh install leaves it to the user.
+  ${If} $UpdateMode = 1
+    nsExec::Exec 'schtasks /run /tn "SysVane Core"'
+    Pop $0
+  ${EndIf}
 !macroend
 
 !macro NSIS_HOOK_PREUNINSTALL
