@@ -9,7 +9,9 @@ const call = <T>(command: string, fallback: T): Promise<T> => (isTauri() ? invok
 
 export const isFlyout = () => call("is_flyout", false);
 export const openDashboard = () => call("open_dashboard", undefined);
-export const startCore = () => call("start_core", undefined);
+export type CoreStart = "ok" | "unelevated" | "failed";
+export const coreStartStatus = () => call<CoreStart>("core_start_status", "ok");
+export const startCore = () => call<CoreStart>("start_core", "ok");
 
 export function onSnapshot(f: (s: Snapshot) => void) {
   if (isTauri()) listen<string>("snapshot", (e) => f(JSON.parse(e.payload) as Snapshot));

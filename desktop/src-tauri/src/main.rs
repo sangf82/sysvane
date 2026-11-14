@@ -17,22 +17,35 @@ const FLYOUT: (f64, f64) = (320.0, 480.0);
 
 struct Flyout(bool);
 
+/// How the last core start went, for the window to ask about; an event could fire before it listens.
+static CORE_START: std::sync::Mutex<&'static str> = std::sync::Mutex::new("ok");
+
 /// Starts the core. The installed core runs from a scheduled task that carries its administrator
 /// rights, so the task is asked first. A development build has no task, so its exe is started directly.
 /// The core allows one instance, so starting it while it is already up is harmless.
-fn spawn_core() {
+/// Returns "ok", "unelevated" (the task would not run, so the core started without administrator
+/// rights and cannot read CPU temperature) or "failed" (the core did not start at all).
+fn spawn_core() -> &'static str {
+    let status = start();
+    *CORE_START.lock().unwrap() = status;
+    status
+}
+
+fn start() -> &'static str {
     let task = Command::new("schtasks")
         .args(["/run", "/tn", CORE_TASK])
         .creation_flags(CREATE_NO_WINDOW)
         .status();
     if task.is_ok_and(|s| s.success()) {
-        return;
+        return "ok";
     }
-    if let Some(core) = std::env::current_exe()
+    match std::env::current_exe()
         .ok()
         .map(|p| p.with_file_name(CORE_EXE))
+        .map(|core| Command::new(core).spawn())
     {
-        let _ = Command::new(core).spawn();
+        Some(Ok(_)) => "unelevated",
+        _ => "failed",
     }
 }
 
@@ -50,7 +63,9 @@ fn pump(app: AppHandle) {
             }
             // Only a core that is missing at launch is started. Later on a missing core means
             // the user chose Quit in the tray.
-            Err(_) if first => spawn_core(),
+            Err(_) if first => {
+                spawn_core();
+            }
             Err(_) => {}
         }
         first = false;
@@ -60,8 +75,13 @@ fn pump(app: AppHandle) {
 
 /// For the dashboard's "Start sysvane-core" button.
 #[tauri::command]
-fn start_core() {
-    spawn_core();
+fn start_core() -> &'static str {
+    spawn_core()
+}
+
+#[tauri::command]
+fn core_start_status() -> &'static str {
+    *CORE_START.lock().unwrap()
 }
 
 #[tauri::command]
@@ -126,7 +146,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             is_flyout,
             open_dashboard,
-            start_core
+            start_core,
+            core_start_status
         ])
         .setup(move |app| {
             let handle = app.handle().clone();

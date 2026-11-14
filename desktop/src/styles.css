@@ -214,11 +214,6 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .btn:hover { background: var(--surface); }
 .btn[aria-pressed="true"] { background: var(--sel); border-color: var(--primary-deep); }
 
-.update-dialog { width: min(480px, 90vw); padding: var(--lg); background: var(--surface); color: var(--ink); border: 1px solid var(--hairline-strong); border-radius: var(--r-sm); }
-.update-dialog::backdrop { background: rgb(0 0 0 / 0.5); }
-.update-dialog h2 { margin: 0 0 var(--md); font-size: 16px; font-weight: 500; }
-.update-dialog .notes { margin: 0 0 var(--lg); max-height: 40vh; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--mute); }
-.update-dialog .row { justify-content: flex-end; }
 .corner { position: absolute; top: var(--sm); right: var(--lg); z-index: 3; display: flex; gap: var(--sm); align-items: center; }
 .update-chip { background: var(--primary); color: var(--on-primary); border: 0; border-radius: var(--r-sm); padding: var(--xs) var(--md); font-size: 12px; font-weight: 500; cursor: pointer; }
 .update-chip:hover { background: var(--primary-deep); }
@@ -231,3 +226,11 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .dd-item { display: flex; align-items: center; justify-content: space-between; gap: var(--md); padding: var(--xs) var(--sm); border-radius: var(--r-xs); font-size: 12px; cursor: pointer; outline: 0; }
 .dd-item[data-highlighted] { background: var(--hairline-cool); }
 .dd-check { color: var(--primary-deep); }
+.al-backdrop { position: fixed; inset: 0; z-index: 30; background: rgb(0 0 0 / 0.5); }
+.al-viewport { position: fixed; inset: 0; z-index: 31; display: grid; place-items: center; padding: var(--lg); }
+.al-popup { width: min(480px, 100%); padding: var(--lg); background: var(--surface); color: var(--ink); border: 1px solid var(--hairline-strong); border-radius: var(--r-sm); outline: 0; }
+.al-title { margin: 0 0 var(--md); font-size: 16px; font-weight: 500; }
+.al-body { margin: 0 0 var(--lg); color: var(--mute); }
+.al-body .notes { max-height: 40vh; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+.al-actions { justify-content: flex-end; }
+.al-actions button:not(.primary) { background: none; border: 1px solid var(--hairline-strong); border-radius: var(--r-sm); padding: var(--sm) var(--lg); font-size: 14px; cursor: pointer; }

@@ -1,9 +1,10 @@
 import { AnimateIcon, IconPathStyle } from "@animate-ui/react/icons";
 import { spring, transition } from "@animate-ui/react/utils/motion";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Flyout } from "./Flyout";
-import { isFlyout, startCore } from "./host";
+import { Alert } from "./Alert";
+import { type CoreStart, coreStartStatus, isFlyout, startCore } from "./host";
 import { type Msg, resolved, t, useLang } from "./i18n";
 import { RES } from "./metrics";
 import { Overview } from "./pages/Overview";
@@ -25,7 +26,7 @@ const NAV: { page: Page; label: Msg; icon: IconName }[] = [
   { page: "processes", label: "Processes", icon: "processes" },
 ];
 
-function Waiting({ connected }: { connected: boolean }) {
+function Waiting({ connected, onStart }: { connected: boolean; onStart: (r: CoreStart) => void }) {
   const [tried, setTried] = useState(false);
   if (connected) return <p className="empty">{t("Reading the first sensor values…")}</p>;
   return (
@@ -36,7 +37,7 @@ function Waiting({ connected }: { connected: boolean }) {
         className="primary"
         onClick={() => {
           setTried(true);
-          startCore();
+          startCore().then(onStart);
         }}
       >
         {t("Start sysvane-core")}
@@ -55,9 +56,17 @@ export default function App() {
   const [resource, setResource] = useState(RES.cpu);
   const [update, recheck] = useUpdate();
   const [installing, setInstalling] = useState(false);
-  const notes = useRef<HTMLDialogElement>(null);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [coreProblem, setCoreProblem] = useState<CoreStart>("ok");
+  const [problemSeen, setProblemSeen] = useState(false);
+  const restarted = (r: CoreStart) => {
+    setCoreProblem(r);
+    setProblemSeen(false);
+  };
   useEffect(() => {
     isFlyout().then(setFlyout);
+    // The first start happens in the shell before this window listens, so ask for its result.
+    coreStartStatus().then(setCoreProblem);
   }, []);
   useEffect(() => {
     document.documentElement.lang = resolved();
@@ -69,7 +78,7 @@ export default function App() {
         <p>{t("The window and the background program are different versions, so the window cannot talk to it safely. Update SysVane, then open it again.")}</p>
       </main>
     );
-  if (flyout) return <main className="flyout-main">{st.snap ? <Flyout s={st.snap} h={st.hist} /> : <Waiting connected={st.connected} />}</main>;
+  if (flyout) return <main className="flyout-main">{st.snap ? <Flyout s={st.snap} h={st.hist} /> : <Waiting connected={st.connected} onStart={restarted} />}</main>;
   const s = st.snap;
   const open = (id: string) => {
     setResource(id);
@@ -106,27 +115,26 @@ export default function App() {
         <div className="corner">
           {!st.connected && <span className="alert-chip" role="alert">{t("Core disconnected")}</span>}
           {update && (
-            <button className="update-chip" onClick={() => notes.current?.showModal()}>
+            <button className="update-chip" onClick={() => setNotesOpen(true)}>
               {t("Update {v}", { v: update.version })}
             </button>
           )}
         </div>
         {update && (
-          <>
-            <dialog ref={notes} className="update-dialog">
-              <h2>{t("SysVane {v} is available.", { v: update.version })}</h2>
-              <p className="notes">{(update.body ?? "").split("**").join("") || t("No changelog.")}</p>
-              <div className="row">
-                <button onClick={() => notes.current?.close()} disabled={installing}>{t("Later")}</button>
-                <button className="primary" disabled={installing} onClick={() => { setInstalling(true); install(update).catch(() => setInstalling(false)); }}>
-                  {installing ? t("Installing…") : t("Install and restart")}
-                </button>
-              </div>
-            </dialog>
-          </>
+          <Alert
+            open={notesOpen}
+            onClose={() => setNotesOpen(false)}
+            title={t("SysVane {v} is available.", { v: update.version })}
+            confirm={{ label: installing ? t("Installing…") : t("Install and restart"), busy: installing, onClick: () => { setInstalling(true); install(update).catch(() => setInstalling(false)); } }}
+          >
+            <p className="notes">{(update.body ?? "").split("**").join("") || t("No changelog.")}</p>
+          </Alert>
         )}
+        <Alert open={coreProblem !== "ok" && !problemSeen} onClose={() => setProblemSeen(true)} title={coreProblem === "failed" ? t("The background program did not start") : t("Administrator rights are missing")}>
+          <p>{coreProblem === "failed" ? t("sysvane-core.exe could not be started. Reinstall SysVane, or check that the file is next to sysvane-ui.exe.") : t("The background program started without administrator rights, so CPU temperature and other hardware readings stay off. Reinstall SysVane to register its scheduled task, which starts the program with the rights it needs.")}</p>
+        </Alert>
         {!s ? (
-          <Waiting connected={st.connected} />
+          <Waiting connected={st.connected} onStart={restarted} />
         ) : (
           <>
             <div className={st.connected ? "" : "stale"}>
