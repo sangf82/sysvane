@@ -66,10 +66,13 @@ export default function App() {
   useEffect(() => {
     isFlyout().then(setFlyout);
   }, []);
-  // The shell starts the core on its own thread, so its result may arrive after this window opens: ask until connected.
+  // The shell starts the core on its own thread, so its result may land before or after this window connects:
+  // ask at every connection change, and keep asking while disconnected.
   useEffect(() => {
+    const ask = () => coreStartStatus().then((r) => r !== "ok" && setCoreProblem(r));
+    ask();
     if (st.connected) return;
-    const id = setInterval(() => coreStartStatus().then((r) => r !== "ok" && setCoreProblem(r)), 1000);
+    const id = setInterval(ask, 1000);
     return () => clearInterval(id);
   }, [st.connected]);
   useEffect(() => {
