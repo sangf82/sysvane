@@ -3,16 +3,16 @@
 
 export type TempKind = "cpu" | "ccd" | "sensor";
 
-export type DeviceId = "core";
+export type DeviceId = "core" | "fake";
 
-export type ControlId = "autostart";
+export type ControlId = "autostart" | "level";
 
 export type ControlValue = boolean | number;
 
 export type DeviceStatus = "ok" | "failed";
 
 // Protocol version, as `PROTOCOL` in the wire crate.
-export const PROTOCOL = 2;
+export const PROTOCOL = 3;
 
 // Seconds between snapshots, as TICK in the wire crate.
 export const TICK_S = 1;

@@ -27,6 +27,8 @@ const VI = {
   Startup: "Khởi động",
   "Start with Windows": "Khởi động cùng Windows",
   "Could not change this: {why}": "Không đổi được: {why}",
+  "Test device": "Thiết bị thử",
+  "Level": "Mức",
   Overview: "Tổng quan",
   "SysVane {v} is available.": "Đã có SysVane {v}.",
   "Install and restart": "Cài và khởi động lại",

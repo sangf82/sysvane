@@ -1,8 +1,8 @@
 # SysVane plan
 
-**Updated:** 2026-11-14
+**Updated:** 2026-11-15
 **Version:** `0.0.2` (beta); the tag `v0.0.2` is not cut yet. `1.0.0` when the app is stable on the owner's ASUS hardware, or handles universal devices well.
-**Status:** M0, M1 and M2 done (0.0.4 is the first self-updating release); M3 in progress. `sysvane-core` samples CPU, RAM, disks, network, processes and the NVIDIA GPU (worker), reads CPU temperature through a core-owned worker (PawnIO), shows a tray icon, serves the data pipe (protocol 1) and writes rotating logs with a diagnostics export. It runs elevated from the scheduled task "SysVane Core", installed by an NSIS installer into `Program Files\SysVane`; "Start with Windows" and uninstall were tested on the owner's PC. `sysvane-ui` has Overview, Performance, Processes and a 320x480 flyout. Not built yet: auto update (M2), command pipe and module framework (M3), and every device module (DDC, LCD, RGB, fans). `modules/ddc/` holds only profiles and notes for the Rust port.
+**Status:** M0 to M3 done (0.0.4 is the first self-updating release; M3 added the command pipe, module host with hang watchdog, resume re-apply and the debug-only fake device, protocol 3). `sysvane-core` samples CPU, RAM, disks, network, processes and the NVIDIA GPU (worker), reads CPU temperature through a core-owned worker (PawnIO), shows a tray icon, serves the data and command pipes (protocol 3) and writes rotating logs with a diagnostics export. It runs elevated from the scheduled task "SysVane Core", installed by an NSIS installer into `Program Files\SysVane`; "Start with Windows" and uninstall were tested on the owner's PC. `sysvane-ui` has Overview, Performance, Processes and a 320x480 flyout. Not built yet: auto update (M2), command pipe and module framework (M3), and every device module (DDC, LCD, RGB, fans). `modules/ddc/` holds only profiles and notes for the Rust port.
 **Evidence:** [research notes](research/). RAM and timing numbers are targets unless marked measured.
 
 ## Decisions (grilling session, 2026-11-12)
@@ -65,7 +65,7 @@ sysvane-ui.exe (Tauri 2 + React, normal user): flyout and dashboard, exits when 
 | Tray | `tray-icon` | Built |
 | Installer | Tauri bundler, NSIS, into `C:\Program Files\SysVane`, asks for administrator once | Working (M1) |
 | Auto update | `tauri-plugin-updater` in the UI only, signed `latest.json` on GitHub Releases | Planned (M2) |
-| Config and profiles | TOML with `serde`, one set per module | Planned (M3) |
+| Config and profiles | TOML with `serde`, one set per module | Built (M3): `core/src/config.rs`; profile loader in M4 |
 | LCD | `nusb`, `image`, `fontdue` | Untried, protocol from source only |
 | DDC/CI | `ddc-winapi` or direct Win32 | Untried, decide when porting |
 
@@ -102,13 +102,14 @@ Each milestone ends with something you can run and check. Order matters: M1 and 
 - Done when: a tag produces a release and your installed copy updates itself without uninstalling.
 
 **M3 Command channel and module framework (`0.0.5`)**
-- Command pipe with ACL, validation, protocol version.
-- Module registry (static list), per-module config and profile loader with validation and `schema`.
-- Watchdog, failed-module state shown in the UI, re-apply after sleep and device change.
-- Fake device harness used by every later module.
-- Done when: a fake module can be controlled from the UI, survives a simulated hang and a simulated resume.
+- Command pipe with ACL, validation, protocol version. **Done.**
+- Module registry (static list) and per-module TOML config with validation. **Done**: `core/src/config.rs`. The profile loader and `schema` moved to M4, which has the first real profile format.
+- Watchdog, failed-module state shown in the UI, re-apply after sleep. **Done.** Re-apply after a device change comes with the first module that has a device-change event (M4).
+- Fake device harness used by every later module. **Done**: `module.rs` (host thread + hang watchdog), `fake.rs` (debug builds), `power.rs` (resume re-apply). Tested by hand: Level slider in Settings > Test device writes `fake.toml`, and a real sleep logs the re-apply.
+- Done when: a fake module can be controlled from the UI, survives a simulated hang and a simulated resume.  **Met 2026-11-15.**
 
 **M4 DDC module (`0.1.0`)**
+- Moved from M3: per-module profile loader with validation and `schema`, built on `config.rs` once the DDC profile format is fixed.
 - Port from commit `30b7852`: `vcp_catalog.py`, `profiles.py`, `monitor_manager.py` and the safety tests. Profiles stay in `modules/ddc/profiles/` as module defaults.
 - One guarded write function; the rules below; fix the known EDID-by-position issue.
 - UI: Displays page with brightness, contrast, colour per monitor, apply and save profile.

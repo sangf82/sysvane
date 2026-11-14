@@ -14,8 +14,8 @@ use windows_sys::Win32::Security::Authorization::{
     ConvertSidToStringSidW, ConvertStringSecurityDescriptorToSecurityDescriptorW, SDDL_REVISION_1,
 };
 use windows_sys::Win32::Security::{
-    GetTokenInformation, PSECURITY_DESCRIPTOR, SECURITY_ATTRIBUTES, TOKEN_QUERY, TOKEN_USER,
-    TokenUser,
+    GetTokenInformation, PSECURITY_DESCRIPTOR, SECURITY_ATTRIBUTES, TOKEN_ELEVATION, TOKEN_QUERY,
+    TOKEN_USER, TokenElevation, TokenUser,
 };
 use windows_sys::Win32::Storage::FileSystem::PIPE_ACCESS_OUTBOUND;
 use windows_sys::Win32::System::Pipes::{
@@ -97,11 +97,40 @@ pub fn current_user_sid() -> Option<String> {
     }
 }
 
+/// Rights the current user gets on the snapshot pipe. An elevated core keeps read only: `BA` already gives it
+/// every right it needs to open the next instance. An unelevated core (dev builds, before M1) is the same
+/// user as the UI, so there is no boundary to protect, and Windows refuses its second instance with error 5
+/// unless the user also holds the write rights (`GR` alone, or read plus 0x4, fails; checked by test).
+fn data_pipe_rights() -> &'static str {
+    if is_elevated() { "GR" } else { "GRGW" }
+}
+
+fn is_elevated() -> bool {
+    // SAFETY: the token handle is closed on every path and the buffer is the size the call expects.
+    unsafe {
+        let mut token = std::ptr::null_mut();
+        if OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token) == 0 {
+            return false;
+        }
+        let mut info = TOKEN_ELEVATION { TokenIsElevated: 0 };
+        let mut len = 0;
+        let ok = GetTokenInformation(
+            token,
+            TokenElevation,
+            (&raw mut info).cast(),
+            size_of::<TOKEN_ELEVATION>() as u32,
+            &mut len,
+        );
+        CloseHandle(token);
+        ok != 0 && info.TokenIsElevated != 0
+    }
+}
+
 /// Accepts clients forever. Each client gets its own writer thread.
 pub fn serve(hub: Arc<Hub>, pipe_name: &str) -> ! {
     let name = wide(pipe_name);
     let access = loop {
-        match Access::current_user("GR") {
+        match Access::current_user(data_pipe_rights()) {
             Some(access) => break access,
             None => {
                 crate::log::error("cannot build the pipe access rules; not serving");
@@ -160,6 +189,31 @@ mod tests {
     use super::*;
     use std::io::{BufRead, BufReader};
     use std::time::{Duration, Instant};
+    /// A second instance of the data pipe must open while the first is in use, whatever the elevation.
+    /// An elevated CI runner passes even with `GR`, so this guards the unelevated dev case only on a normal shell.
+    #[test]
+    fn a_second_instance_opens_with_the_rights_chosen_for_this_process() {
+        let name = wide(&format!(r"\\.\pipe\sysvane-rights-{}", std::process::id()));
+        let access = Access::current_user(data_pipe_rights()).unwrap();
+        let create = || {
+            // SAFETY: `name` is NUL-terminated and `access` outlives the call; the handle is leaked in this test.
+            let h = unsafe {
+                CreateNamedPipeW(
+                    name.as_ptr(),
+                    PIPE_ACCESS_OUTBOUND,
+                    PIPE_TYPE_BYTE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS,
+                    PIPE_UNLIMITED_INSTANCES,
+                    4096,
+                    0,
+                    0,
+                    &access.attributes,
+                )
+            };
+            h != INVALID_HANDLE_VALUE
+        };
+        assert!(create(), "first instance");
+        assert!(create(), "second instance");
+    }
 
     const WAIT: Duration = Duration::from_secs(5);
 

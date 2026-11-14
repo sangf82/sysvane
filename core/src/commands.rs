@@ -87,7 +87,7 @@ mod tests {
     use super::*;
     use std::io::Cursor;
 
-    const GOOD: &str = r#"{"protocol":2,"device":"core","control":"autostart","value":true}"#;
+    const GOOD: &str = r#"{"protocol":3,"device":"core","control":"autostart","value":true}"#;
 
     fn run(input: &[u8]) -> Vec<Command> {
         let mut reader = Cursor::new(input.to_vec());

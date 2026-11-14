@@ -13,6 +13,8 @@ import { useTheme } from "../theme";
 export function Settings({ update, recheck, devices }: { update: Update | null; recheck: () => Promise<Update | null>; devices: Snapshot["devices"] }) {
   const core = devices.find((d) => d.id === "core");
   const autostart = core?.controls.find((c) => c.id === "autostart")?.value === true;
+  const fake = devices.find((d) => d.id === "fake");
+  const level = Number(fake?.controls.find((c) => c.id === "level")?.value ?? 0);
   const [sendError, setSendError] = useState<string | null>(null);
   const [version, setVersion] = useState("");
   const [checked, setChecked] = useState<"idle" | "busy" | "none">("idle");
@@ -69,6 +71,18 @@ export function Settings({ update, recheck, devices }: { update: Update | null; 
         </div>
         {(sendError || core?.error) && <p className="problem" role="alert">{t("Could not change this: {why}", { why: sendError ?? core?.error ?? "" })}</p>}
       </section>
+      {fake && (
+        <section className="section">
+          <header>
+            <h2>{t("Test device")}</h2>
+          </header>
+          <div className="row">
+            <span>{t("Level")}</span>
+            <input type="range" min={0} max={100} value={level} aria-label={t("Level")} onChange={(e) => { setSendError(null); sendCommand("fake", "level", Number(e.target.value)).catch((err) => setSendError(String(err))); }} />
+          </div>
+          {fake.error && <p className="problem" role="alert">{t("Could not change this: {why}", { why: fake.error })}</p>}
+        </section>
+      )}
       <section className="section">
         <header>
           <h2>{t("Licences")}</h2>

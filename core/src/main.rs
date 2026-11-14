@@ -3,16 +3,24 @@
 
 mod collector;
 mod commands;
+// Release builds have no module until M4, so these are unused there.
+#[cfg_attr(not(debug_assertions), allow(dead_code))]
+mod config;
 mod cputemp;
 mod devices;
+#[cfg(debug_assertions)]
+mod fake;
 mod gpu;
 mod hub;
 mod install;
 mod latest;
 mod log;
 mod mode;
+#[cfg_attr(not(debug_assertions), allow(dead_code))]
+mod module;
 mod perf;
 mod pipe;
+mod power;
 mod tray;
 mod win;
 mod worker;
@@ -52,7 +60,8 @@ fn main() {
     log::init();
     log::info(concat!("core ", env!("CARGO_PKG_VERSION"), " started"));
     let hub = Arc::new(hub::Hub::default());
-    let devices = devices::Devices::start(install::autostart_enabled());
+    let devices = devices::Devices::start(install::autostart_enabled(), modules());
+    power::watch(devices.clone());
     let d = devices.clone();
     std::thread::spawn(move || commands::serve(d, sysvane_wire::COMMAND_PIPE_NAME));
     let h = hub.clone();
@@ -67,4 +76,12 @@ fn main() {
         })
     });
     tray::run(for_tray);
+}
+
+/// The compiled-in modules. The fake device exists in debug builds only.
+fn modules() -> Vec<module::Host> {
+    vec![
+        #[cfg(debug_assertions)]
+        module::Host::spawn(fake::Fake::new(config::dir().join("fake.toml"))),
+    ]
 }

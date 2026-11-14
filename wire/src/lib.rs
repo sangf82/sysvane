@@ -19,7 +19,7 @@ pub const FLYOUT_ARG: &str = "--flyout";
 
 /// Version of the pipe protocol: the snapshot and, later, the commands. Raise it when either changes
 /// shape. The UI refuses to talk to a core that reports another number.
-pub const PROTOCOL: u32 = 2;
+pub const PROTOCOL: u32 = 3;
 
 /// Time between snapshots. The UI keeps a fixed number of them, so its "2 minutes" labels depend on this.
 pub const TICK: Duration = Duration::from_secs(1);
@@ -49,12 +49,16 @@ pub struct Snapshot {
 pub enum DeviceId {
     /// The core itself: settings that live in the core, such as starting with Windows.
     Core,
+    /// Test device with no hardware behind it. Only debug builds register it.
+    Fake,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum ControlId {
     Autostart,
+    /// 0 to 100. The fake device refuses anything else.
+    Level,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Debug)]
@@ -416,7 +420,7 @@ mod tests {
 
     #[test]
     fn commands_are_validated_by_type() {
-        let ok = r#"{"protocol":2,"device":"core","control":"autostart","value":true}"#;
+        let ok = r#"{"protocol":3,"device":"core","control":"autostart","value":true}"#;
         let c: Command = serde_json::from_str(ok).unwrap();
         assert_eq!(
             (c.device, c.control, c.value),
@@ -427,10 +431,10 @@ mod tests {
             )
         );
         for bad in [
-            r#"{"protocol":2,"device":"core","control":"autostart","value":true,"path":"x"}"#,
-            r#"{"protocol":2,"device":"gpu","control":"autostart","value":true}"#,
-            r#"{"protocol":2,"device":"core","control":"format","value":true}"#,
-            r#"{"protocol":2,"device":"core","control":"autostart","value":"on"}"#,
+            r#"{"protocol":3,"device":"core","control":"autostart","value":true,"path":"x"}"#,
+            r#"{"protocol":3,"device":"gpu","control":"autostart","value":true}"#,
+            r#"{"protocol":3,"device":"core","control":"format","value":true}"#,
+            r#"{"protocol":3,"device":"core","control":"autostart","value":"on"}"#,
             r#"{"device":"core","control":"autostart","value":true}"#,
         ] {
             assert!(serde_json::from_str::<Command>(bad).is_err(), "{bad}");
