@@ -1,7 +1,7 @@
 # Read-only probe: reads AMD CPU temperature registers through PawnIO. Needs an elevated shell.
-# Repeats the registers and decoding of core/src/cputemp.rs, for use without the core.
+# Repeats the registers and decoding of core/src/sensors/cputemp.rs, for use without the core.
 # Run from an administrator terminal: tools\probe-temp.cmd
-param([string]$Module = (Join-Path $PSScriptRoot '..\core\pawnio\AMDFamily17.bin'))
+param([string]$Module = (Join-Path $PSScriptRoot '..\core\assets\pawnio\AMDFamily17.bin'))
 
 Add-Type @'
 using System;

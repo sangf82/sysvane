@@ -25,7 +25,7 @@ One compiled-in Rust core that owns every hardware bus, with a UI that never tou
 - Windows 11, AMD Ryzen 9 9900X, NVIDIA GeForce RTX 5070 Ti, two Acer AL258Q monitors on DDC/CI, an AIO cooler with an LCD panel.
 - The core runs in the tray all day; the flyout (320x480) and the dashboard open on demand.
 - CPU temperature needs the PawnIO driver and an elevated helper, set up once from the tray menu.
-- Documents: `docs/plan.md` (plan and status), `AGENTS.md` (rules), `DESIGN.md` (visual tokens), `modules/ddc/docs/` (calibration and VCP notes).
+- Documents: `docs/plan.md` (plan and status), `AGENTS.md` (rules), `DESIGN.md` (visual tokens), `docs/architecture.md` (file tree), `docs/devices/ddc/` (calibration and VCP notes).
 
 ## Capabilities and Constraints
 

@@ -3,6 +3,8 @@ import { isTauri } from "@tauri-apps/api/core";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { useEffect, useState } from "react";
 
+export type { Update };
+
 const DAY = 24 * 60 * 60 * 1000;
 
 /** Checks at start and once a day while the window stays open. A failed check (offline, no release) is silent. */

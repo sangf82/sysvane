@@ -9,8 +9,8 @@ use sysvane_wire::{Temp, TempKind};
 use windows_sys::Win32::Foundation::{CloseHandle, WAIT_ABANDONED, WAIT_OBJECT_0};
 use windows_sys::Win32::System::Threading::{CreateMutexW, ReleaseMutex, WaitForSingleObject};
 
-/// Signed PawnIO module for AMD family 17h to 1Ah (LGPL-2.1, see core/pawnio/COPYING).
-static MODULE: &[u8] = include_bytes!("../../pawnio/AMDFamily17.bin");
+/// Signed PawnIO module for AMD family 17h to 1Ah (LGPL-2.1, see core/assets/pawnio/COPYING).
+static MODULE: &[u8] = include_bytes!("../../assets/pawnio/AMDFamily17.bin");
 
 const TCTL_REG: u32 = 0x0005_9800;
 /// CCD temperature registers: Zen 2 to Zen 4 start at the first, Zen 5 at the second.

@@ -1,9 +1,7 @@
-import { getVersion } from "@tauri-apps/api/app";
-import { isTauri } from "@tauri-apps/api/core";
-import type { Update } from "@tauri-apps/plugin-updater";
 import { useEffect, useState } from "react";
 import { Dropdown } from "../components/Dropdown";
-import { sendCommand } from "../lib/host";
+import { appVersion, sendCommand } from "../lib/host";
+import type { Update } from "../lib/update";
 import { Switch } from "../components/Switch";
 import type { Snapshot } from "../wire";
 import { t, useLang } from "../lib/i18n";
@@ -21,7 +19,7 @@ export function Settings({ update, recheck, devices }: { update: Update | null; 
   const [theme, setTheme] = useTheme();
   const [lang, setLang] = useLang();
   useEffect(() => {
-    if (isTauri()) getVersion().then(setVersion);
+    appVersion().then(setVersion);
   }, []);
   return (
     <div className="page">

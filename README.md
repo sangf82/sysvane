@@ -9,9 +9,10 @@ Early stage: monitoring works (CPU, memory, GPU, disks, network, processes, a tr
 - `core/` — background program, Rust.
 - `desktop/` — flyout and dashboard, Tauri 2 + React/Vite.
 - `wire/` — what the core and the UI share: pipe name, process names, snapshot types.
-- `modules/ddc/` — monitor calibration profiles and VCP notes.
 - `branding/logo/` — logo kit and the scripts that build it.
-- `DESIGN.md` — design system.
+- `DESIGN.md` — design system; `PRODUCT.md` — product brief.
+- `docs/` — architecture, plan and status, work in progress (`handoff.md`), monitor calibration notes, dated research.
+- `tools/` — read-only hardware probes; `scripts/` — release helpers.
 
 ## Requirements
 

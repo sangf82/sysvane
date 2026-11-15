@@ -11,13 +11,15 @@ Very low-RAM, tray-first Windows app replacing ASUS Armoury Crate and vendor dev
 
 ## Layout
 
-- `core/` — `sysvane-core`, the headless background program: sensors, device detection, config, built-in modules.
-- `desktop/` — `sysvane-ui`, Tauri 2 + React/Vite. Started on demand, exits when closed, never touches hardware.
-- `wire/` — `sysvane-wire`, all the core and UI share: pipe name, process names, snapshot types. `desktop/src/wire.ts` mirrors them; a test fails if field names differ.
-- `modules/ddc/` — calibration profiles and VCP notes for the Rust DDC module.
+- `core/` — `sysvane-core`, the headless background program. `src/sensors/` (generic monitoring), `src/ipc/` (pipes, commands, access), `src/system/` (tray, install, power, workers, Win32 helpers), `src/modules/` (device module host, config, fake device). `assets/`: tray icon, `pawnio/` driver module.
+- Device modules: `core/src/modules/<kind>/<vendor>.rs` (kind: fan, rgb, lcd, mouse, keyboard, monitor, headset), each with `detect()`, listed statically in `modules/mod.rs`. A vendor protocol shared across kinds goes in `vendors/<vendor>/` with no `Module` impl. Board variants are data profiles. No folder until its first real module.
+- `desktop/` — `sysvane-ui`, Tauri 2 + React/Vite. Started on demand, exits when closed, never touches hardware. `src/pages/`, `src/components/`, `src/lib/`; Tauri shell in `src-tauri/src/` (`core_proc`, `relay`, `window`).
+- `wire/` — `sysvane-wire`, all the core and UI share: pipe name, process names, snapshot types (`consts`, `command`, `snapshot`). `desktop/src/wire.ts` mirrors them; a test reads it by path and fails if field names differ.
+- `docs/` — `architecture.md` (tree and rules), `handoff.md` (work in progress: read it first, update it when a step ends), `plan.md`, `devices/ddc/` (calibration, VCP notes, profiles for the future Rust DDC module).
 - `DESIGN.md` — UI design system.
 - `branding/logo/` — Crate logo kit (`kit/`, rules in `kit/GUIDELINES.md`) and `scripts/` that regenerate it and the Tauri icons. Tray icon: `core/assets/tray-32.rgba`.
 - `tools/` — read-only hardware probes, usable without the core.
+- `scripts/` — release helpers (`bump-version.ps1`).
 - `docs/research/` — dated, historical notes (old project name).
 - Commit `30b7852` holds the removed Python implementation to port from.
 
@@ -53,7 +55,7 @@ A wrong DDC write blacks out the display, and DDC/CI has no undo.
 
 - CVTE scalers (Acer AL258Q) lock the RGB gain DAC while a factory color preset is active. Write `0x14 = 11` (User) before `0x16`/`0x18`/`0x1A`.
 - Left panel: `0x14=5`, R50 G50 B50. Right panel: `0x14=11`, R47 G49 B51. Both: brightness 70, contrast 50.
-- Details: `modules/ddc/docs/CALIBRATION.md`.
+- Details: `docs/devices/ddc/CALIBRATION.md`.
 
 ## Testing the UI
 

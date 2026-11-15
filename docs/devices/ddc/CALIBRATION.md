@@ -43,9 +43,9 @@ Các profile được lưu dưới định dạng JSON trong thư mục `profile
 
 ---
 
-## 4. Cách Sử Dụng Lệnh CLI
+## 4. Cách Sử Dụng Lệnh CLI (lịch sử)
 
-Chạy các lệnh sau trong thư mục `modules/ddc`.
+> Lịch sử: CLI Python `sysvane-ddc` đã bị xoá (còn trong commit `30b7852`). Các lệnh dưới đây không chạy được cho tới khi module DDC bằng Rust có lệnh tương đương.
 
 ### Áp dụng cho cả 2 màn hình cùng lúc (Khuyên dùng)
 ```powershell
