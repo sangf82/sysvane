@@ -12,3 +12,5 @@ export const dur = (s: number) => {
   const hms = [Math.floor((s % 86400) / 3600), Math.floor((s % 3600) / 60), Math.floor(s % 60)].map((n) => String(n).padStart(2, "0")).join(":");
   return d ? `${d}d ${hms}` : hms;
 };
+export const temp = (c: number) => `${c.toFixed(0)} °C`;
+export const watts = (w: number) => `${w.toFixed(0)} W`;

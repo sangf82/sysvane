@@ -1,8 +1,10 @@
-import { t } from "../i18n";
-import { RES, cpuTemp, diskName, memPercent, netTotals, netsByTraffic } from "../metrics";
-import { HISTORY_MINUTES, type History, K } from "../series";
-import { bytes, dur, ghz, pct, rate } from "../format";
-import { Bar, Flow, Graph, Section, Stats, TEMP_WARN, TempHint, heat, heatTemp } from "../ui";
+import { t } from "../lib/i18n";
+import { RES, cpuTemp, diskName, memPercent, netTotals, netsByTraffic } from "../lib/metrics";
+import { HISTORY_MINUTES, type History, K } from "../lib/series";
+import { bytes, dur, ghz, pct, rate, temp, watts } from "../lib/format";
+import { Graph } from "../components/charts";
+import { Flow, Section, Stats, TempHint } from "../components/layout";
+import { Bar, TEMP_WARN, heat, heatTemp } from "../components/meters";
 import type { Proc, Snapshot } from "../wire";
 
 type Open = (resource: string) => void;
@@ -85,7 +87,7 @@ function ledgerRows(s: Snapshot, h: History): Row[] {
   const { rx, tx } = netTotals(s);
   const busiestNet = netsByTraffic(s)[0];
   const rows: Row[] = [
-    { key: RES.cpu, open: RES.cpu, label: "CPU", usage: s.cpu.usage, value: pct(s.cpu.usage), detail: `${s.cpu.mhz != null ? ghz(s.cpu.mhz) : t("clock unavailable")}${tctl ? `, ${tctl.celsius.toFixed(0)} °C` : ""}`, hist: h[K.cpu] ?? [], max: 100 },
+    { key: RES.cpu, open: RES.cpu, label: "CPU", usage: s.cpu.usage, value: pct(s.cpu.usage), detail: `${s.cpu.mhz != null ? ghz(s.cpu.mhz) : t("clock n/a")}${tctl ? `, ${temp(tctl.celsius)}` : ""}`, hist: h[K.cpu] ?? [], max: 100 },
     { key: RES.mem, open: RES.mem, label: t("Memory"), usage: memPct, value: pct(memPct), detail: t("{used} of {total}, {cached} cached", { used: bytes(s.mem.used), total: bytes(s.mem.total), cached: bytes(s.mem.cached) }), hist: h[K.mem] ?? [], max: 100 },
   ];
   if (s.gpu)
@@ -95,7 +97,7 @@ function ledgerRows(s: Snapshot, h: History): Row[] {
       label: "GPU",
       usage: s.gpu.util,
       value: pct(s.gpu.util),
-      detail: `${t("{v} VRAM", { v: bytes(s.gpu.mem_used) })}${s.gpu.temp_c != null ? `, ${s.gpu.temp_c} °C` : ""}${s.gpu.power_w != null ? `, ${s.gpu.power_w.toFixed(0)} W` : ""}`,
+      detail: `${t("{v} VRAM", { v: bytes(s.gpu.mem_used) })}${s.gpu.temp_c != null ? `, ${temp(s.gpu.temp_c)}` : ""}${s.gpu.power_w != null ? `, ${watts(s.gpu.power_w)}` : ""}`,
       hist: h[K.gpu] ?? [],
       max: 100,
     });
@@ -149,7 +151,7 @@ export function Overview({ s, h, open }: { s: Snapshot; h: History; open: Open }
                   <td className="bar-cell">
                     <Bar value={x.celsius} color={heatTemp(x.celsius)} />
                   </td>
-                  <td className="r num">{x.celsius.toFixed(0)} °C</td>
+                  <td className="r num">{temp(x.celsius)}</td>
                 </tr>
               ))}
             </tbody>

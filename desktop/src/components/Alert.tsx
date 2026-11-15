@@ -1,6 +1,6 @@
 import { AlertDialog } from "@animate-ui/react/primitives/base-ui/alert-dialog";
 import type { ReactNode } from "react";
-import { t } from "./i18n";
+import { t } from "../lib/i18n";
 
 /** One confirm dialog for the whole app: Animate UI's Base UI alert dialog, styled in styles.css.
  *  Without `confirm` it is a notice with a single OK button. */

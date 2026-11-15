@@ -61,5 +61,5 @@ The SVG viewBoxes are tight to the artwork; they are not the clear space.
   - `uv run --no-project --with fonttools --with brotli --with uharfbuzz python branding/logo/scripts/build_kit.py` (needs `npm install` in `desktop/` for the Inter file)
   - `uv run --no-project python branding/logo/scripts/build_icons.py <logo-design skill>/scripts` (renders through that skill's `render_png.py`; it needs Chrome, rsvg, Inkscape or cairosvg)
 - `variants/`, `test/` and `board/` come from the skill's `export_variants.py`, `preview_sheet.py` and `presentation_board.py` (spec: `board-spec.json`); they are not rebuilt by the scripts above.
-- The sidebar logo in `desktop/src/ui.tsx` (`Logo`) holds a copy of `sysvane-symbol-small.svg`'s paths. Update it when the kit changes.
+- The sidebar logo in `desktop/src/components/layout.tsx` (`Logo`) holds a copy of `sysvane-symbol-small.svg`'s paths. Update it when the kit changes.
 

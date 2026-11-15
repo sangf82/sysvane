@@ -1,6 +1,6 @@
 // Numbers and names derived from a snapshot, so every page reads them the same way.
 
-import type { Disk, Net, Snapshot, Temp } from "./wire";
+import type { Disk, Net, Snapshot, Temp } from "../wire";
 
 export const percentOf = (used: number, total: number) => (total ? (used / total) * 100 : 0);
 export const memPercent = (s: Snapshot) => percentOf(s.mem.used, s.mem.total);

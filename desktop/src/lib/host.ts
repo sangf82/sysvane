@@ -3,7 +3,7 @@
 
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { ControlId, ControlValue, DeviceId, Snapshot } from "./wire";
+import type { ControlId, ControlValue, DeviceId, Snapshot } from "../wire";
 
 const call = <T>(command: string, fallback: T): Promise<T> => (isTauri() ? invoke<T>(command) : Promise.resolve(fallback));
 

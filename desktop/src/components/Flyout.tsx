@@ -1,10 +1,12 @@
-import { openDashboard } from "./host";
-import { t } from "./i18n";
-import { cpuTemp, memPercent, netTotals } from "./metrics";
-import { type History, K } from "./series";
-import { bytes, pct, rate } from "./format";
-import { Flow, Graph, Meter } from "./ui";
-import type { Snapshot } from "./wire";
+import { openDashboard } from "../lib/host";
+import { t } from "../lib/i18n";
+import { cpuTemp, memPercent, netTotals } from "../lib/metrics";
+import { type History, K } from "../lib/series";
+import { bytes, pct, rate, temp } from "../lib/format";
+import { Graph } from "./charts";
+import { Flow } from "./layout";
+import { Meter } from "./meters";
+import type { Snapshot } from "../wire";
 
 function Block({ title, right, children }: { title: string; right?: string; children: React.ReactNode }) {
   return (
@@ -23,13 +25,13 @@ export function Flyout({ s, h }: { s: Snapshot; h: History }) {
   const { rx, tx } = netTotals(s);
   return (
     <div className="flyout">
-      <Block title="CPU" right={`${pct(s.cpu.usage)}${tctl ? `, ${tctl.celsius.toFixed(0)} °C` : ""}`}>
+      <Block title="CPU" right={`${pct(s.cpu.usage)}${tctl ? `, ${temp(tctl.celsius)}` : ""}`}>
         <div className="spark">
           <Graph data={h[K.cpu] ?? []} max={100} />
         </div>
       </Block>
       {s.gpu && (
-        <Block title="GPU" right={`${pct(s.gpu.util)}${s.gpu.temp_c != null ? `, ${s.gpu.temp_c} °C` : ""}`}>
+        <Block title="GPU" right={`${pct(s.gpu.util)}${s.gpu.temp_c != null ? `, ${temp(s.gpu.temp_c)}` : ""}`}>
           <div className="spark">
             <Graph data={h[K.gpu] ?? []} max={100} />
           </div>

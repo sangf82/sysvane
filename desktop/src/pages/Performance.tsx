@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { t } from "../i18n";
-import { RES, cpuTemp, cpuTemps, diskName, memPercent, netsByTraffic } from "../metrics";
-import { type History, K } from "../series";
-import { bytes, dur, ghz, pct, rate } from "../format";
-import { Chart, Flow, Graph, PercentChart, Stats, TempChart, TempHint } from "../ui";
+import { t } from "../lib/i18n";
+import { RES, cpuTemp, cpuTemps, diskName, memPercent, netsByTraffic } from "../lib/metrics";
+import { type History, K } from "../lib/series";
+import { bytes, dur, ghz, pct, rate, temp, watts } from "../lib/format";
+import { Chart, Graph, PercentChart, TempChart } from "../components/charts";
+import { Flow, Stats, TempHint } from "../components/layout";
 import type { Disk, Gpu, Net, Snapshot } from "../wire";
 
 const of = (a: string, b: string) => t("{a} of {b}", { a, b });
@@ -13,7 +14,7 @@ type Item = { key: string; title: string; sub: string; value: string; hist: numb
 function items(s: Snapshot, h: History): Item[] {
   const tctl = cpuTemp(s);
   const list: Item[] = [
-    { key: RES.cpu, title: "CPU", sub: `${s.cpu.mhz != null ? ghz(s.cpu.mhz) : t("clock n/a")}${tctl ? `, ${tctl.celsius.toFixed(0)} °C` : ""}`, value: pct(s.cpu.usage), hist: h[K.cpu] ?? [], max: 100, detail: <CpuDetail s={s} h={h} /> },
+    { key: RES.cpu, title: "CPU", sub: `${s.cpu.mhz != null ? ghz(s.cpu.mhz) : t("clock n/a")}${tctl ? `, ${temp(tctl.celsius)}` : ""}`, value: pct(s.cpu.usage), hist: h[K.cpu] ?? [], max: 100, detail: <CpuDetail s={s} h={h} /> },
     { key: RES.mem, title: t("Memory"), sub: of(bytes(s.mem.used), bytes(s.mem.total)), value: pct(memPercent(s)), hist: h[K.mem] ?? [], max: 100, detail: <MemDetail s={s} h={h} /> },
   ];
   if (s.gpu) list.push({ key: RES.gpu, title: "GPU", sub: s.gpu.name.replace("NVIDIA GeForce ", ""), value: pct(s.gpu.util), hist: h[K.gpu] ?? [], max: 100, detail: <GpuDetail g={s.gpu} h={h} /> });
@@ -43,7 +44,7 @@ function CpuDetail({ s, h }: { s: Snapshot; h: History }) {
         items={[
           { label: t("Utilization"), value: pct(s.cpu.usage), big: true },
           { label: t("Speed"), value: s.cpu.mhz != null ? ghz(s.cpu.mhz) : t("n/a"), big: true },
-          { label: t("Temperature"), value: tctl ? `${tctl.celsius.toFixed(0)} °C` : t("n/a"), big: true },
+          { label: t("Temperature"), value: tctl ? temp(tctl.celsius) : t("n/a"), big: true },
         ]}
       />
       <div className="seg" role="group" aria-label={t("CPU view")}>
@@ -82,7 +83,7 @@ function CpuDetail({ s, h }: { s: Snapshot; h: History }) {
           { label: t("Up time"), value: dur(s.host.uptime_s) },
           { label: t("Vendor"), value: s.cpu.vendor },
           { label: t("Architecture"), value: s.host.arch },
-          ...temps.filter((x) => x !== tctl).map((x) => ({ label: x.label, value: `${x.celsius.toFixed(0)} °C` })),
+          ...temps.filter((x) => x !== tctl).map((x) => ({ label: x.label, value: temp(x.celsius) })),
         ]}
       />
       {!tctl && <TempHint />}
@@ -142,7 +143,7 @@ function GpuDetail({ g, h }: { g: Gpu; h: History }) {
         items={[
           { label: t("Utilization"), value: pct(g.util), big: true },
           { label: t("Dedicated memory"), value: of(bytes(g.mem_used), bytes(g.mem_total)), big: true },
-          { label: t("Temperature"), value: g.temp_c != null ? `${g.temp_c} °C` : t("n/a"), big: true },
+          { label: t("Temperature"), value: g.temp_c != null ? temp(g.temp_c) : t("n/a"), big: true },
         ]}
       />
       <PercentChart title={t("Utilization")} data={h[K.gpu] ?? []} tall />
@@ -157,7 +158,7 @@ function GpuDetail({ g, h }: { g: Gpu; h: History }) {
       )}
       <Stats
         items={[
-          { label: t("Power"), value: g.power_w != null ? (g.power_limit_w ? t("{a} W of {b} W", { a: g.power_w.toFixed(0), b: g.power_limit_w.toFixed(0) }) : `${g.power_w.toFixed(0)} W`) : t("n/a") },
+          { label: t("Power"), value: g.power_w != null ? (g.power_limit_w ? t("{a} W of {b} W", { a: g.power_w.toFixed(0), b: g.power_limit_w.toFixed(0) }) : watts(g.power_w)) : t("n/a") },
           { label: t("Graphics clock"), value: g.clock_gr_mhz != null ? `${g.clock_gr_mhz} MHz` : t("n/a") },
           { label: t("Memory clock"), value: g.clock_mem_mhz != null ? `${g.clock_mem_mhz} MHz` : t("n/a") },
           { label: t("Fan"), value: g.fan_pct != null ? `${g.fan_pct}%` : t("n/a") },

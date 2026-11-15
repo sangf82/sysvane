@@ -1,7 +1,7 @@
 // The history the UI keeps: one array per plotted series, newest sample last.
 
 import { cpuTemp, netTotals, percentOf } from "./metrics";
-import { type Snapshot, TICK_S } from "./wire";
+import { type Snapshot, TICK_S } from "../wire";
 
 export const HISTORY = 120;
 /** How far back the graphs reach, for their time labels. */

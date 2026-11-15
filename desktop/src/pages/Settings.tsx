@@ -2,12 +2,12 @@ import { getVersion } from "@tauri-apps/api/app";
 import { isTauri } from "@tauri-apps/api/core";
 import type { Update } from "@tauri-apps/plugin-updater";
 import { useEffect, useState } from "react";
-import { Dropdown } from "../Dropdown";
-import { sendCommand } from "../host";
-import { Switch } from "../Switch";
+import { Dropdown } from "../components/Dropdown";
+import { sendCommand } from "../lib/host";
+import { Switch } from "../components/Switch";
 import type { Snapshot } from "../wire";
-import { t, useLang } from "../i18n";
-import { useTheme } from "../theme";
+import { t, useLang } from "../lib/i18n";
+import { useTheme } from "../lib/theme";
 
 /** What the user can set from the window. Startup, fans and other core-owned settings arrive with the command channel (M3). */
 export function Settings({ update, recheck, devices }: { update: Update | null; recheck: () => Promise<Update | null>; devices: Snapshot["devices"] }) {

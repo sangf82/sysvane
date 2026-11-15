@@ -1,9 +1,9 @@
 import { transition } from "@animate-ui/react/utils/motion";
 import { motion } from "motion/react";
 import { useMemo, useRef, useState } from "react";
-import { t } from "../i18n";
-import { bytes, dur, rate } from "../format";
-import { Icon } from "../ui";
+import { t } from "../lib/i18n";
+import { bytes, dur, rate } from "../lib/format";
+import { Icon } from "../components/layout";
 import type { Proc } from "../wire";
 import { COLUMNS, type Col, type Column, type Sort, arrange, rows, search } from "./processTable";
 

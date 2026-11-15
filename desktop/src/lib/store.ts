@@ -1,6 +1,6 @@
 import { onCoreStatus, onSnapshot } from "./host";
 import { type History, record } from "./series";
-import type { Snapshot } from "./wire";
+import type { Snapshot } from "../wire";
 
 export type State = { connected: boolean; snap: Snapshot | null; hist: History };
 

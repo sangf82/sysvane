@@ -1,7 +1,7 @@
 // The process table's data: rows, columns, searching and ordering. The page only draws it.
 
-import type { Msg } from "../i18n";
-import { bytes, dur, rate } from "../format";
+import type { Msg } from "../lib/i18n";
+import { bytes, dur, rate } from "../lib/format";
 import type { Proc } from "../wire";
 
 export type Col = "name" | "pid" | "ppid" | "user" | "cpu" | "mem" | "virt" | "read" | "write" | "run";
