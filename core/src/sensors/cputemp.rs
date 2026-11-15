@@ -2,7 +2,7 @@
 //! It is read in a worker process (`worker.rs`).
 //! `tools/probe-temp.ps1` repeats the register numbers below for use without the core.
 
-use crate::win::wide;
+use crate::system::win::wide;
 use libloading::Library;
 use std::ffi::c_void;
 use sysvane_wire::{Temp, TempKind};
@@ -10,7 +10,7 @@ use windows_sys::Win32::Foundation::{CloseHandle, WAIT_ABANDONED, WAIT_OBJECT_0}
 use windows_sys::Win32::System::Threading::{CreateMutexW, ReleaseMutex, WaitForSingleObject};
 
 /// Signed PawnIO module for AMD family 17h to 1Ah (LGPL-2.1, see core/pawnio/COPYING).
-static MODULE: &[u8] = include_bytes!("../pawnio/AMDFamily17.bin");
+static MODULE: &[u8] = include_bytes!("../../pawnio/AMDFamily17.bin");
 
 const TCTL_REG: u32 = 0x0005_9800;
 /// CCD temperature registers: Zen 2 to Zen 4 start at the first, Zen 5 at the second.
@@ -145,7 +145,7 @@ impl Drop for PawnIo {
 /// Worker entry point: see `worker::run`. Without administrator rights PawnIO cannot be opened and the reading stays `null`.
 pub fn worker_main() {
     let io = PawnIo::open();
-    crate::worker::run(|| io.as_ref().map(PawnIo::temps).filter(|t| !t.is_empty()));
+    crate::system::worker::run(|| io.as_ref().map(PawnIo::temps).filter(|t| !t.is_empty()));
 }
 
 #[cfg(test)]

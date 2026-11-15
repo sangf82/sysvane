@@ -31,5 +31,5 @@ fn read(nvml: &Nvml) -> Option<Gpu> {
 /// Worker entry point: see `worker::run`.
 pub fn worker_main() {
     let nvml = Nvml::init().ok();
-    crate::worker::run(|| nvml.as_ref().and_then(read));
+    crate::system::worker::run(|| nvml.as_ref().and_then(read));
 }

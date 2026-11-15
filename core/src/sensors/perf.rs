@@ -4,7 +4,7 @@
 //! - Per-volume active time and response time from the LogicalDisk counters.
 //! - Process, thread and handle counts and the commit/cache/pool figures.
 
-use crate::win::wide;
+use crate::system::win::wide;
 use std::collections::HashMap;
 use std::ffi::c_void;
 use windows_sys::Win32::System::Performance::{

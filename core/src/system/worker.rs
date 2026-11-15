@@ -3,9 +3,9 @@
 //! elevated too, so no separate helper is needed. The child writes one JSON line per tick on
 //! stdout (`null` when unreadable); the core keeps the newest one and starts the child again if it dies.
 
-use crate::latest::Latest;
-use crate::mode::Mode;
-use crate::win::hidden;
+use crate::sensors::latest::Latest;
+use crate::system::mode::Mode;
+use crate::system::win::hidden;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::io::Write;
@@ -72,7 +72,7 @@ impl<T: Clone + DeserializeOwned + Send + 'static> Worker<T> {
             && self.started.elapsed() >= RESPAWN_EVERY
             && let Some(child) = spawn(self.mode, &self.latest)
         {
-            crate::log::info(&format!(
+            crate::system::log::info(&format!(
                 "worker {} died; started a new one",
                 self.mode.flag()
             ));

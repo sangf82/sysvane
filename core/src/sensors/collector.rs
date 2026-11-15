@@ -1,9 +1,9 @@
 //! Samples the whole system once per tick into a wire `Snapshot`.
 
-use crate::devices::Devices;
-use crate::mode::Mode;
-use crate::perf::{Perf, PerfSample, SysTotals, sys_totals};
-use crate::worker::Worker;
+use crate::modules::devices::Devices;
+use crate::sensors::perf::{Perf, PerfSample, SysTotals, sys_totals};
+use crate::system::mode::Mode;
+use crate::system::worker::Worker;
 use std::sync::Arc;
 use sysinfo::{
     Components, DiskKind, Disks, Networks, ProcessRefreshKind, ProcessesToUpdate, System,

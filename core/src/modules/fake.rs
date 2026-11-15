@@ -1,8 +1,8 @@
 //! Fake device: no hardware, one `level` control, saved in `fake.toml`. It is the reference for every later
 //! module (config load, validation, re-apply) and what the UI is tested against. Debug builds only.
 
-use crate::config;
-use crate::module::Module;
+use crate::modules::Module;
+use crate::modules::config;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use sysvane_wire::{Control, ControlId, ControlValue, DeviceId};

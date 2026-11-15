@@ -2,7 +2,7 @@
 //! the command pipe never touches a device and two commands never run together. The result shows in the
 //! next snapshot (`snapshot()`); there is no reply.
 
-use crate::module::Host;
+use crate::modules::Host;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, SyncSender, sync_channel};
 use std::sync::{Arc, Mutex};
@@ -24,7 +24,7 @@ pub struct Devices {
 impl Devices {
     /// Starts the owner thread. `initial` is what the scheduled task holds now.
     pub fn start(initial: bool, modules: Vec<Host>) -> Arc<Self> {
-        Self::with(initial, crate::install::register, modules)
+        Self::with(initial, crate::system::install::register, modules)
     }
 
     fn with(
@@ -54,7 +54,7 @@ impl Devices {
     /// Called from the pipe thread: checks the protocol and queues. Never blocks.
     pub fn submit(&self, command: Command) -> bool {
         if command.protocol != PROTOCOL {
-            crate::log::error(&format!("command refused: protocol {}", command.protocol));
+            crate::system::log::error(&format!("command refused: protocol {}", command.protocol));
             return false;
         }
         self.tx.try_send(command).is_ok()
@@ -69,7 +69,7 @@ impl Devices {
                 .find(|m| m.id() == command.device)
                 .is_some_and(|m| m.set(command.control, command.value));
             if !sent {
-                crate::log::error(&format!(
+                crate::system::log::error(&format!(
                     "command dropped: {:?} is missing or busy",
                     command.device
                 ));
@@ -84,7 +84,7 @@ impl Devices {
         };
         let error = result.err();
         if let Some(e) = &error {
-            crate::log::error(&format!("command failed: {e}"));
+            crate::system::log::error(&format!("command failed: {e}"));
         }
         *self.error.lock().unwrap() = error;
     }
@@ -104,7 +104,7 @@ impl Devices {
     pub fn resume(&self) {
         for m in &self.modules {
             if !m.reapply() {
-                crate::log::error(&format!("re-apply dropped: {:?} is busy", m.id()));
+                crate::system::log::error(&format!("re-apply dropped: {:?} is busy", m.id()));
             }
         }
     }
@@ -143,7 +143,7 @@ fn cmd(on: bool) -> Command {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::module::tests::{Probe, wait};
+    use crate::modules::tests::{Probe, wait};
     use std::time::Duration;
 
     #[test]

@@ -2,6 +2,11 @@
 //! costs only its own device: the core, the pipe and the other modules keep going. The watchdog is the
 //! clock on the call in progress; a module is reported failed while a call outlasts `DEADLINE`.
 
+pub mod config;
+pub mod devices;
+#[cfg(debug_assertions)]
+pub mod fake;
+
 use std::sync::mpsc::{SyncSender, sync_channel};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -62,7 +67,7 @@ impl Host {
                     Job::Reapply => module.reapply(),
                 };
                 if let Err(e) = &result {
-                    crate::log::error(&format!("{id:?}: {e}"));
+                    crate::system::log::error(&format!("{id:?}: {e}"));
                 }
                 let controls = module.controls();
                 let mut s = state.lock().unwrap();

@@ -2,9 +2,9 @@
 //! and queued for the device owner thread. The pipe thread never touches a device. A line that is too long
 //! or not a valid command drops that client: the UI never sends one.
 
-use crate::devices::Devices;
-use crate::pipe::Access;
-use crate::win::wide;
+use super::access::Access;
+use crate::modules::devices::Devices;
+use crate::system::win::wide;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read};
 use std::os::windows::io::FromRawHandle;
@@ -35,7 +35,9 @@ pub fn serve(devices: Arc<Devices>, pipe_name: &str) -> ! {
         match Access::current_user("GRGW") {
             Some(access) => break access,
             None => {
-                crate::log::error("cannot build the command pipe access rules; not serving");
+                crate::system::log::error(
+                    "cannot build the command pipe access rules; not serving",
+                );
                 std::thread::sleep(std::time::Duration::from_secs(5));
             }
         }
@@ -56,7 +58,7 @@ pub fn serve(devices: Arc<Devices>, pipe_name: &str) -> ! {
         };
         if handle == INVALID_HANDLE_VALUE {
             // SAFETY: plain FFI call reading thread-local error state.
-            crate::log::error(&format!("CreateNamedPipeW (commands) failed: {}", unsafe {
+            crate::system::log::error(&format!("CreateNamedPipeW (commands) failed: {}", unsafe {
                 GetLastError()
             }));
             std::thread::sleep(std::time::Duration::from_secs(1));

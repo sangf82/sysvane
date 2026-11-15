@@ -2,7 +2,7 @@
 //! prompt for it, and a Run key cannot start an elevated exe at all. The installer registers the task
 //! once (that needs admin). "Start with Windows" adds or removes its logon trigger.
 
-use crate::win::hidden;
+use crate::system::win::hidden;
 use sysvane_wire::CORE_TASK;
 
 fn xml_escape(s: &str) -> String {
@@ -102,11 +102,11 @@ pub fn run_unregister() {
 
 /// The installer reads the exit code; the log keeps the reason.
 fn report(what: &str, result: &Result<(), String>) {
-    crate::log::init();
+    crate::system::log::init();
     match result {
-        Ok(()) => crate::log::info(&format!("{what}: done")),
+        Ok(()) => crate::system::log::info(&format!("{what}: done")),
         Err(e) => {
-            crate::log::error(&format!("{what}: {e}"));
+            crate::system::log::error(&format!("{what}: {e}"));
             std::process::exit(1);
         }
     }

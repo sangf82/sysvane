@@ -1,32 +1,19 @@
 // GUI subsystem always: no console window when started from the tray, the Run key or the UI.
 #![windows_subsystem = "windows"]
 
-mod collector;
-mod commands;
+mod ipc;
 // Release builds have no module until M4, so these are unused there.
 #[cfg_attr(not(debug_assertions), allow(dead_code))]
-mod config;
-mod cputemp;
-mod devices;
-#[cfg(debug_assertions)]
-mod fake;
-mod gpu;
-mod hub;
-mod install;
-mod latest;
-mod log;
-mod mode;
-#[cfg_attr(not(debug_assertions), allow(dead_code))]
-mod module;
-mod perf;
-mod pipe;
-mod power;
-mod tray;
-mod win;
-mod worker;
+mod modules;
+mod sensors;
+mod system;
 
-use mode::Mode;
+use ipc::{commands, hub, pipe};
+use modules::devices;
+use sensors::{collector, cputemp, gpu};
 use std::sync::Arc;
+use system::{install, power, tray};
+use system::{log, mode::Mode, win};
 use windows_sys::Win32::Foundation::{ERROR_ALREADY_EXISTS, GetLastError};
 use windows_sys::Win32::System::Threading::CreateMutexW;
 
@@ -79,9 +66,11 @@ fn main() {
 }
 
 /// The compiled-in modules. The fake device exists in debug builds only.
-fn modules() -> Vec<module::Host> {
+fn modules() -> Vec<modules::Host> {
     vec![
         #[cfg(debug_assertions)]
-        module::Host::spawn(fake::Fake::new(config::dir().join("fake.toml"))),
+        modules::Host::spawn(modules::fake::Fake::new(
+            modules::config::dir().join("fake.toml"),
+        )),
     ]
 }

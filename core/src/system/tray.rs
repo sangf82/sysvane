@@ -1,6 +1,6 @@
 //! Tray icon and its menu. Runs the Win32 message loop on the calling thread.
 
-use crate::devices::Devices;
+use crate::modules::devices::Devices;
 use std::ffi::OsStr;
 use std::process::Command;
 use std::sync::Arc;
@@ -45,7 +45,7 @@ fn launch_ui(flyout: bool) {
         Ok(child) => {
             unsafe { AllowSetForegroundWindow(child.id()) };
         }
-        Err(e) => crate::log::error(&format!("cannot start {UI_EXE}: {e}")),
+        Err(e) => crate::system::log::error(&format!("cannot start {UI_EXE}: {e}")),
     }
 }
 
@@ -53,7 +53,7 @@ fn launch_ui(flyout: bool) {
 /// Raw bytes keep the core free of an image decoder.
 // shortcut: one 32 px bitmap that Windows scales to the tray size; ship 16/20/24 px too if it looks soft on the taskbar.
 fn icon() -> Icon {
-    Icon::from_rgba(include_bytes!("../assets/tray-32.rgba").to_vec(), 32, 32)
+    Icon::from_rgba(include_bytes!("../../assets/tray-32.rgba").to_vec(), 32, 32)
         .expect("icon buffer matches its size")
 }
 
@@ -62,7 +62,7 @@ fn export_diagnostics() -> Result<(), String> {
     let stage = std::env::temp_dir().join("sysvane-diagnostics");
     let _ = std::fs::remove_dir_all(&stage);
     std::fs::create_dir_all(&stage).map_err(|e| e.to_string())?;
-    for entry in std::fs::read_dir(crate::log::dir())
+    for entry in std::fs::read_dir(crate::system::log::dir())
         .map_err(|e| e.to_string())?
         .flatten()
     {
@@ -76,7 +76,7 @@ fn export_diagnostics() -> Result<(), String> {
     );
     std::fs::write(stage.join("version.txt"), note).map_err(|e| e.to_string())?;
     // PowerShell knows the real Desktop folder, which OneDrive often moves away from %USERPROFILE%\Desktop.
-    let out = crate::win::hidden("powershell")
+    let out = crate::system::win::hidden("powershell")
         .args([
             "-NoProfile",
             "-Command",
@@ -125,15 +125,15 @@ pub fn run(devices: Arc<Devices>) {
         } else if e.id == auto_id {
             // The check mark already flipped, so set the trigger to the opposite of what the core holds.
             if let Err(err) = devices.set_autostart(!devices.autostart()) {
-                crate::log::error(&format!("autostart change failed: {err}"));
+                crate::system::log::error(&format!("autostart change failed: {err}"));
             }
         } else if e.id == logs_id {
             let _ = std::process::Command::new("explorer")
-                .arg(crate::log::dir())
+                .arg(crate::system::log::dir())
                 .spawn();
         } else if e.id == diag_id {
             if let Err(err) = export_diagnostics() {
-                crate::log::error(&format!("diagnostics export failed: {err}"));
+                crate::system::log::error(&format!("diagnostics export failed: {err}"));
             }
         } else if e.id == quit_id {
             std::process::exit(0);

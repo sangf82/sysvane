@@ -13,7 +13,7 @@ pub fn dir() -> PathBuf {
 pub fn load<T: DeserializeOwned + Default>(path: &Path) -> T {
     match std::fs::read_to_string(path) {
         Ok(text) => toml::from_str(&text).unwrap_or_else(|e| {
-            crate::log::error(&format!("{}: {e}; using defaults", path.display()));
+            crate::system::log::error(&format!("{}: {e}; using defaults", path.display()));
             T::default()
         }),
         Err(_) => T::default(),
