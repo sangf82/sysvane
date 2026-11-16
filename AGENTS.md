@@ -38,6 +38,6 @@ Very low-RAM, tray-first Windows app replacing ASUS Armoury Crate and vendor dev
 
 ## Agents and skills
 
-- `rust-core` preloads `rust-best-practices`; `frontend-ui` preloads `impeccable`, `animate-ui`, `agent-desktop`. These skills are hidden from the main session: delegate, or the user types `/unslop` for a review pass.
+- `rust-core` preloads `rust-best-practices`; `frontend-ui` preloads `impeccable`, `animate-ui`, `agent-desktop`. `impeccable` and `rust-best-practices` are not hidden (hiding them blocks preload); prefer delegating to the agents. The user types `/unslop` for a review pass.
 - Hooks (`.claude/hooks/`): `format-rust` after `.rs` edits; `lint-on-stop` runs fmt, clippy and `tsc` on files edited since the last clean pass, and blocks the stop once on failure.
 - Claude Code questions: use the `claude-code-guide` MCP first.

@@ -72,10 +72,8 @@
     ]
   },
   "skillOverrides": {
-    "impeccable": "user-invocable-only",
     "unslop": "user-invocable-only",
-    "logo-design:logo-design": "user-invocable-only",
-    "rust-best-practices": "user-invocable-only"
+    "logo-design:logo-design": "user-invocable-only"
   },
   "enabledPlugins": {
     "logo-design@logo-design-skill": true,
