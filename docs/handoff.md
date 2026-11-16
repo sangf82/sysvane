@@ -1,95 +1,37 @@
 # Handoff
 
-Updated 2026-11-16. Read this before starting; update or remove a step when it ends. Tree and rules: `docs/architecture.md`. Milestones: `docs/plan.md`.
+Updated 2026-11-16. Language: vi. Đọc file này trước; cây thư mục và quy tắc: `docs/architecture.md`; milestone: `docs/plan.md`; ghi chú module monitor (M4, thiết kế Displays, "Not done", mẹo agent-desktop): `docs/monitor-notes.md`.
 
 ## State
-Branch `main`. M4 (DDC module) is done and committed (`5d43806`, `ecec470`). The UI redesigns are in `b3ee479`. The Displays redesign is in `4aa203f`; its review fixes (`styles.css`) are **not committed**. The Claude Code workflow (agents, commands, hooks, release flow) was reworked on 2026-11-16 and is **not committed**. No Rust changed this session.
+Nhánh `main`, tag mới nhất `v0.0.4`. M4 (DDC) xong. Quy trình Claude Code (agents, lệnh, hooks, release) đã commit (`43a6665`). Chưa push gì. Chưa đổi Rust trong phiên này.
 
-### Uncommitted (two groups, commit separately)
-1. **UI review fixes:** `desktop/src/styles.css`, this file. Ready to commit ("Fix Displays review items").
-2. **Claude Code workflow, ready to commit** ("Set up Claude Code workflow"): `AGENTS.md` (rewritten short; rules moved to trail learnings and `docs/`), `.claude/settings.json` (`skillOverrides`, `rust-analyzer-lsp`), `.claude/agents/` (`rust-core` and `frontend-ui` set to Sonnet; new `scout` and `verify` on Haiku), `.claude/commands/` (`/status`, `/milestone`, `/handoff`, `/release`), `.claude/hooks/guard-monitor.ps1` (agent-desktop match only at command position) and `lint-on-stop.ps1` (lints only files edited since the last clean pass), `.github/workflows/release.yml` (notes from `docs/releases/<tag>.md`), `docs/releases/README.md`. Leave `.claude/settings.local.json.bak` out; the owner may delete it.
+## Uncommitted (sẵn sàng commit, hỏi chủ trước)
+- `.claude/commands/handoff.md`, `status.md`: `/handoff` hỏi ngôn ngữ, viết lại gọn (<40 dòng); `/status` trả lời theo dòng `Language:`.
+- `docs/handoff.md`, `docs/monitor-notes.md`: handoff rút gọn, phần dài chuyển sang notes.
+- `.trail/hook.cjs`: do `trail init` (trail 0.30.2) ghi lại. Commit cùng `.trail/` nếu muốn.
 
-### Next
-1. Commit the two groups above (owner says yes first).
-2. `/milestone M5` (LCD module): it grills the owner on the M5 open questions (Levita Vision USB protocol, built-in themes) before any code. Done when `docs/plan.md` M5 "done when" holds.
-3. Fix review items 1 and 2 below when the UI is next touched (`styles.css`).
-4. If `animate-ui` is to be used: run `npx shadcn init` in `desktop/` only after `frontend-ui` shows which files it changes (`styles.css`, aliases, Tailwind).
+## Next
+1. Commit nhóm trên (chủ nói yes).
+2. `/milestone M5` (module LCD): hỏi chủ về giao thức USB Levita Vision và theme dựng sẵn trước khi viết code. Xong khi mục "done when" của M5 trong `docs/plan.md` đúng.
+3. Sửa 2 mục review UI khi đụng `styles.css`: thumb 14 px và ô số cao ~22 px (<24 px); `.problem` (`styles.css:285`) dùng vạch đỏ bên trái.
+4. Nếu dùng `animate-ui`: chạy `npx shadcn init` trong `desktop/` chỉ sau khi `frontend-ui` liệt kê file sẽ đổi.
 
-### Decisions (this session, not in the code)
-- Model roles: Sonnet leads, Opus is advisor (`advisorModel` in user settings), Haiku for `scout` and `verify`. The global `CLAUDE_CODE_SUBAGENT_MODEL=haiku` was removed from `~/.claude/settings.json` (backup `settings.json.bak-subagent`) because it forced every subagent, including `rust-core`, onto Haiku.
-- FE skills (`impeccable`, `unslop`, `logo-design`) and `rust-best-practices` are hidden from the main session and preloaded by the agents; `unslop` is review only (`/unslop`); `animate-ui` stays visible and is preloaded by `frontend-ui`.
-- The shadcn MCP stays: `animate-ui` needs the shadcn registry even though `desktop/` has no `components.json` yet.
-- `/release` pushes after the owner approves the changelog; normal work asks about commits only.
-- Hardware safety rules stay in `AGENTS.md` (always loaded), not in learnings, which load only when a prompt matches.
+## Decisions (phiên này, code không thể hiện)
+- `/release` hỏi yes lần nữa trước mọi `git push`; duyệt changelog chưa đủ.
+- Hook trail `tool-savings` giữ lại (chạy `node` cục bộ, không tốn token model).
+- Sonnet dẫn dắt, Opus cố vấn, Haiku cho `scout`/`verify`; đã gỡ `CLAUDE_CODE_SUBAGENT_MODEL=haiku` toàn cục (backup `~/.claude/settings.json.bak-subagent`).
 
-### Open questions
-- Hook `tool-savings` and the trail "tokens saved" line were removed from `settings.local.json`; run `trail init` to restore. Recommendation: leave removed.
-- Ask the owner whether a pre-push confirmation inside `/release` is wanted. Recommendation: no, changelog approval is the gate.
+## Open questions
+- Không có.
 
-### Not verified
-- The agents `frontend-ui` and `rust-core` loading their preloaded skills while those are `user-invocable-only`.
-- `scout` and `verify` actually running on Haiku (check the status line).
-- `/status`, `/milestone`, `/release` and the changed `release.yml` (`--notes-file`) have never run. First real `/release` will test the workflow.
-- `skills-lock.json` restore on a fresh clone (`.claude/skills/` is gitignored).
+## Not verified
+- `rust-core`/`frontend-ui` nạp được skill preload khi skill là `user-invocable-only`.
+- `scout`/`verify` thật sự chạy Haiku (xem status line).
+- `/status`, `/milestone`, `/release`, `/handoff` mới và `--notes-file` trong `release.yml` chưa chạy thật; lần `/release` đầu sẽ thử workflow.
+- `skills-lock.json` khi clone mới (`.claude/skills/` bị gitignore).
+- Core dev đang chạy trên PC chưa khởi động lại sau bản sửa serial = 0.
 
-### Gotchas
-- `guard-monitor` used to block any Bash command whose text contained "agent-desktop" and "find"/"press"; fixed, but write skill or agent files with Write/Edit if it trips again.
-- Trail hooks live in `.claude/settings.local.json` (gitignored), so they only exist on this machine.
-- PowerShell 5.1 `Set-Content` has no `-NoNewline`; use the Edit tool for hook files.
-
-### Displays redesign (2026-11-16, `4aa203f`; review fixes uncommitted)
-- Under the monitor cards, one panel per section, full width, in this order: Profiles (first, for a quick pick) / Display (Windows: resolution, refresh rate, orientation, Identify) / Picture (DDC: brightness, contrast, volume) / Colour.
-- Colour has a switch, Monitor (DDC) | Graphics card. Both stay in force; the switch only picks which sliders show. Default: Graphics card when its colour is changed or the monitor has no DDC colour, Monitor otherwise. A note says when the other one is also changed.
-- Section headers carry a 16 px Lucide icon from `components/glyphs.tsx` (bookmark, monitor, sun, palette); Identify and Reset carry scan and undo. Header class is `.sechead`: `.mhead` already belongs to the meter rows.
-- Sliders are drawn from tokens (`--pct` fills the track); the number beside each is an input (Enter or blur sends, Esc drops, held to 0–100). No white-point swatches in the headers: they read as a radio or a checkbox. The card swatch shows the monitor white point through the GPU one.
-
-### Review of the redesign (impeccable audit, 15/20)
-- Fixed: slider fill and thumb use `--control` (`#1f9d6a` in light, about 3.3:1 on `#fafafa`; `#3ecf8e` in dark); `.sechead` wraps (checked at 700 and 560 px, both tabs); `.mnum` focus has the 2 px emerald ring; the thumb shadow comes from `--ink`. The empty track stays light (`--hairline-strong`): the thumb and fill identify the control.
-- Open:
-1. Thumb 14 px and number field about 22 px tall, under 24 px.
-2. `.problem` (`styles.css:285`) uses a red left rule; the detector flags it.
-- The detector ran on source only; the rendered scan needs the app started with a DevTools port. Typing into the number field is not tried on the real app.
-
-### M4 summary (what exists)
-- `core/src/modules/monitor/`: `vcp.rs` (allowlist, the one guarded write, `Caps` parser, `Bus` trait, test `Fake`), `ddc.rs` (dxva2, capabilities, EDID from the registry, gamma ramp), `profile.rs` (JSON profiles), `mode.rs` (resolution, refresh rate, orientation, desktop-shape check), `gamma.rs` (GPU colour), `edid.rs` (name and serial), `mod.rs` (`Monitor` module).
-- Levels (brightness, contrast, gains, 6-axis, black levels, volume) are a percentage of each monitor's maximum in the UI, in profiles and in `vcp::write`. Preset, picture mode and 0x0C stay raw.
-- Controls follow the capabilities string: the six named ones plus `ControlId::Vcp(code)` for every other listed, scaled code. The preset list comes from the capabilities; one option shows as text.
-- Profiles carry `model`; 0xB6 (picture mode) is written only to the same model. Order: 0xB6, 0x0C, 0x14, the rest.
-- Resolution, refresh rate and orientation are 15 s trials (keep or revert; a failed revert is retried every second; quit from the tray and Scan stop the modules first, so their `Drop` reverts).
-- GPU colour through `SetDeviceGammaRamp` (brightness, contrast, gamma, R/G/B), written only when not neutral, again at start, resume and after mode changes; saved per monitor by EDID serial, or by display number when the serial is zero. `GpuReset` is one command. `Identify` dims the monitor 3 times through the ramp.
-- Monitor names come from the EDID name ("AL258Q · Display 1"); the capabilities' `model` ("CVTE", the scaler) gates model-specific profile codes.
-- UI: Displays page, see "Displays redesign" above. Apply/Save spinners via `Device.busy`.
-
-### Checked on the real PC (2026-11-16)
-- Both calibrated profiles applied from the app with no error: Display 2 (left) B70 C50 R50 G50 B50 preset 5; Display 1 (right) B70 C50 R47 G49 B51 preset 5.
-- Sliders, profile save/apply, Volume (0x62), GPU colour (B255 = 55705 at blue 85, Reset to identity), Identify, Portrait trial reverting at 15 s, EDID names.
-- After the zero-serial fix, the core running on the PC was not restarted: the next start keys GPU colour by display number.
-
-## Decisions
-- Writes use an allowlist of image codes (`vcp::WRITABLE`), not a deny list: resets, power and input are absent, so no profile or UI value can reach them.
-- 0x14 is checked against MCCS 1..=13, every other code against the monitor's reported maximum.
-- These AL258Q (picture mode 3) take preset 5 only over DDC: capabilities say `14(05)`; writes of 1, 4 and 11 are ignored. `Calibrated-Right` uses preset 5.
-- Monitors keep their own DDC settings, so re-apply after sleep only reads them; the GPU ramp is written again.
-- DDC calls run on the module thread under the host watchdog, not in a worker process (review finding 2026-11-16, kept: a hung dxva2 call leaves one thread behind, logged, and the module shows "not answering").
-- Default profiles live in `core/src/modules/monitor/profiles/` and are compiled in. User profiles and GPU colour files: `%ProgramData%\SysVane\config\monitor\`.
-- Exe icons are read by the Tauri shell (on a blocking thread), not the core.
-- No raw DDC writes from scripts: test writes go through the app or the command pipe. `tools/probe-ddc.ps1` only reads.
-
-## Not done
-1. `DeviceId::Monitor(u8)` is the enumeration position: after a Scan or hot-plug a command can reach another monitor. Key devices by a stable id (needs a wire change).
-2. Gains at preset 5: written and read back, but whether they change the picture (the old "preset 5 locks the DAC" note) is not checked by eye.
-3. One UI run on 2026-11-16 left Display 2 in portrait while the core read landscape; not reproduced. `mode::set` now checks the desktop shape and sets the mode again once.
-4. While a display is in portrait, the resolution list from Windows is not checked.
-5. Hot-plug: no automatic detection; Scan re-detects.
-6. From the refactor: flyout, core-start alert and elevated restart are checked by compiling only; `tools\probe-temp.cmd` not run after the PawnIO path move (CPU temperature itself reads fine through the elevated core).
-7. Test files left by the owner: `%ProgramData%\SysVane\config\monitor\Test-Standard-User.json`, `gpu-Display 2.toml` (neutral).
-
-## Watch out
-- `desktop/src/wire.ts` stays at that path: two tests in `wire/src/lib.rs` read it by path.
-- Run clippy in release as well as debug.
-- `trail check` flags `desktop/package-lock.json`, `AGENTS.md:71`, `devices.rs` and `config.rs` by keyword: all false so far.
-- `vcp::Fake` is test-only. The debug fake device (`modules/fake.rs`) is unrelated and stays.
-- A dev core started by `npm run tauri dev` is unelevated: no CPU temperature. Start `target\debug\sysvane-core.exe` with `-Verb RunAs` (after stopping the unelevated one). An elevated core can only be stopped from an elevated shell.
-- `agent-desktop` on this PC: use `find --app sysvane-ui.exe --window-id <id>`, not `snapshot`. Anything with `aria-pressed` (monitor cards, the Colour switch, `.seg` buttons) is a `switch`: use `toggle`. After a hot reload the tree can lag; pass `--timeout-ms 15000`. Open dropdowns with `click`, then pick the `option`; picking the current value sends nothing.
-- `System.Windows.Forms.Screen` caches in a long-running PowerShell: read screen sizes from a fresh process.
-- `tools/probe-ddc.ps1` sees a monitor only while it is on; it can read while the core runs.
+## Gotchas
+- `guard-monitor` từng chặn mọi lệnh Bash chứa "agent-desktop" và "find"/"press"; đã sửa, nếu lại vướng thì ghi file bằng Write/Edit.
+- Hook trail nằm trong `.claude/settings.local.json` (gitignore), chỉ có trên máy này. Sao lưu file trước khi chạy `trail init`.
+- PowerShell 5.1 `Set-Content` không có `-NoNewline`; dùng Edit cho file hook.
