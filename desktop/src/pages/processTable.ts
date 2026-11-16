@@ -20,6 +20,10 @@ export type Row = {
   read: number;
   write: number;
   run: number;
+  exe: string | null;
+  /** Tree view only: nesting level and number of direct children. */
+  depth?: number;
+  kids?: number;
 };
 
 export type Column = {
@@ -32,6 +36,8 @@ export type Column = {
   text?: boolean;
   /** A class for its cells, besides the alignment. */
   cell?: string;
+  /** Draws a bar behind the value: `pct` is already 0 to 100, `rel` is scaled to the largest row. */
+  bar?: "pct" | "rel";
   value: (r: Row) => string | number;
   show: (r: Row) => string | number;
 };
@@ -42,15 +48,15 @@ const speed = (bps: number) => (bps ? rate(bps) : "0");
 
 export const COLUMNS: Column[] = [
   { id: "name", label: "Name", locked: true, cell: "pname", text: true, value: (r) => r.name, show: (r) => (r.count > 1 ? `${r.name} (${r.count})` : r.name) },
-  { id: "pid", label: "PID", right: true, value: (r) => r.pid ?? 0, show: (r) => r.pid ?? "" },
-  { id: "ppid", label: "Parent", right: true, value: (r) => r.ppid ?? 0, show: (r) => r.ppid ?? "" },
-  { id: "user", label: "User", text: true, value: (r) => r.user, show: (r) => r.user },
-  { id: "cpu", label: "CPU", right: true, value: (r) => r.cpu, show: (r) => `${r.cpu.toFixed(1)}%` },
-  { id: "mem", label: "Memory", right: true, value: (r) => r.mem, show: (r) => bytes(r.mem) },
-  { id: "virt", label: "Virtual", right: true, value: (r) => r.virt, show: (r) => bytes(r.virt) },
+  { id: "cpu", label: "CPU", right: true, bar: "pct", value: (r) => r.cpu, show: (r) => `${r.cpu.toFixed(1)}%` },
+  { id: "mem", label: "Memory", right: true, bar: "rel", value: (r) => r.mem, show: (r) => bytes(r.mem) },
   { id: "read", label: "Disk read", right: true, value: (r) => r.read, show: (r) => speed(r.read) },
   { id: "write", label: "Disk write", right: true, value: (r) => r.write, show: (r) => speed(r.write) },
+  { id: "pid", label: "PID", right: true, value: (r) => r.pid ?? 0, show: (r) => r.pid ?? "" },
+  { id: "user", label: "User", text: true, value: (r) => r.user, show: (r) => r.user },
   { id: "run", label: "Run time", right: true, value: (r) => r.run, show: (r) => (r.run === NO_RUN ? "–" : dur(r.run)) },
+  { id: "ppid", label: "Parent", right: true, value: (r) => r.ppid ?? 0, show: (r) => r.ppid ?? "" },
+  { id: "virt", label: "Virtual", right: true, value: (r) => r.virt, show: (r) => bytes(r.virt) },
 ];
 
 function rowOf(p: Proc, grouped: boolean): Row {
@@ -67,6 +73,7 @@ function rowOf(p: Proc, grouped: boolean): Row {
     read: p.read_bps,
     write: p.write_bps,
     run: p.run_s ?? NO_RUN,
+    exe: p.exe,
   };
 }
 
@@ -112,4 +119,48 @@ export function arrange(list: Row[], sort: Sort, previous: string[] | null): Row
   const known = list.filter((r) => place.has(r.key)).sort((a, b) => place.get(a.key)! - place.get(b.key)!);
   const fresh = list.filter((r) => !place.has(r.key)).sort((a, b) => b.cpu - a.cpu);
   return [...known, ...fresh];
+}
+
+/** Parent of `p` among `byPid`, if it is still running. Windows reuses PIDs, so a "parent" that
+ *  started after its child is a different process and does not count. */
+function parentOf(p: Proc, byPid: Map<number, Proc>): Proc | undefined {
+  if (p.ppid == null || p.ppid === p.pid) return undefined;
+  const parent = byPid.get(p.ppid);
+  if (!parent || (parent.start != null && p.start != null && parent.start > p.start)) return undefined;
+  return parent;
+}
+
+/** Processes as a parent/child tree. `shown` are the ones the filter kept; their ancestors are added
+ *  so each stays under its parent. Siblings follow `order` (the flat order's row keys). Children of a
+ *  PID in `collapsed` are left out. */
+export function tree(all: Proc[], shown: Proc[], order: string[], collapsed: Set<number>): Row[] {
+  const byPid = new Map(all.map((p) => [p.pid, p]));
+  const keep = new Set<number>();
+  for (const p of shown) {
+    // The guard ends a PID cycle that a reused PID could still form.
+    for (let x: Proc | undefined = p; x && !keep.has(x.pid); x = parentOf(x, byPid)) keep.add(x.pid);
+  }
+  const rank = new Map(order.map((key, i) => [key, i]));
+  const at = (p: Proc) => rank.get(String(p.pid)) ?? Infinity;
+  const children = new Map<number | null, Proc[]>();
+  for (const pid of keep) {
+    const p = byPid.get(pid)!;
+    const parent = parentOf(p, byPid);
+    const key = parent && keep.has(parent.pid) ? parent.pid : null;
+    children.set(key, [...(children.get(key) ?? []), p]);
+  }
+  for (const list of children.values()) list.sort((a, b) => at(a) - at(b));
+  const out: Row[] = [];
+  const seen = new Set<number>();
+  const walk = (p: Proc, depth: number, emit: boolean) => {
+    if (seen.has(p.pid)) return;
+    seen.add(p.pid);
+    const kids = children.get(p.pid) ?? [];
+    if (emit) out.push({ ...rowOf(p, false), depth, kids: kids.length });
+    for (const k of kids) walk(k, depth + 1, emit && !collapsed.has(p.pid));
+  };
+  for (const root of children.get(null) ?? []) walk(root, 0, true);
+  // Processes caught in a PID cycle have no root above them: list them at the top level.
+  for (const pid of keep) walk(byPid.get(pid)!, 0, true);
+  return out;
 }

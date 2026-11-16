@@ -1,4 +1,5 @@
 mod core_proc;
+mod icon;
 mod relay;
 mod window;
 
@@ -17,7 +18,8 @@ pub fn run() {
             core_proc::start_core,
             core_proc::core_start_status,
             relay::send_command,
-            core_proc::restart_core_elevated
+            core_proc::restart_core_elevated,
+            icon::exe_icon
         ])
         .setup(move |app| {
             let handle = app.handle().clone();

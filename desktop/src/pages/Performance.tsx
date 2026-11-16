@@ -5,6 +5,7 @@ import { type History, K } from "../lib/series";
 import { bytes, dur, ghz, pct, rate, temp, watts } from "../lib/format";
 import { Chart, Graph, PercentChart, TempChart } from "../components/charts";
 import { Flow, Stats, TempHint } from "../components/layout";
+import { MemSplit } from "../components/meters";
 import type { Disk, Gpu, Net, Snapshot } from "../wire";
 
 const of = (a: string, b: string) => t("{a} of {b}", { a, b });
@@ -93,9 +94,6 @@ function CpuDetail({ s, h }: { s: Snapshot; h: History }) {
 
 function MemDetail({ s, h }: { s: Snapshot; h: History }) {
   const m = s.mem;
-  const cached = Math.min(m.cached, Math.max(0, m.total - m.used));
-  const free = Math.max(0, m.total - m.used - cached);
-  const seg = (v: number) => `${(v / (m.total || 1)) * 100}%`;
   return (
     <>
       <Head title={t("Memory")} sub={bytes(m.total)} />
@@ -109,16 +107,7 @@ function MemDetail({ s, h }: { s: Snapshot; h: History }) {
       <Chart title={t("Memory in use")} scale={bytes(m.total)} tall>
         <Graph data={h[K.mem] ?? []} max={100} />
       </Chart>
-      <div className="compose" role="img" aria-label={`${t("In use")} ${bytes(m.used)}, ${t("Cached")} ${bytes(cached)}, ${t("Free")} ${bytes(free)}`}>
-        <div style={{ width: seg(m.used), background: "var(--accent)" }} />
-        <div style={{ width: seg(cached), background: "var(--series-2)" }} />
-        <div style={{ width: seg(free), background: "var(--hairline-cool)" }} />
-      </div>
-      <div className="legend">
-        <span><i style={{ background: "var(--accent)" }} />{t("In use")}</span>
-        <span><i style={{ background: "var(--series-2)" }} />{t("Cached")}</span>
-        <span><i style={{ background: "var(--hairline-cool)" }} />{t("Free")}</span>
-      </div>
+      <MemSplit m={m} />
       <Chart title={t("Committed")} scale={bytes(m.commit_limit)}>
         <Graph data={h[K.commit] ?? []} max={100} muted />
       </Chart>

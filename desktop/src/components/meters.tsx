@@ -1,3 +1,6 @@
+import { bytes } from "../lib/format";
+import { t } from "../lib/i18n";
+import type { Mem } from "../wire";
 /** Fill colour for a usage meter. Text is never coloured by state: emerald and yellow fail contrast on the canvas. */
 export const heat = (v: number) => (v < 60 ? "var(--accent)" : v < 85 ? "var(--warn)" : "var(--hot)");
 /** Temperature where the meter turns red and the graphs draw their warning line. */
@@ -23,5 +26,33 @@ export function Meter({ label, value, right }: { label: string; value: number; r
       </div>
       <Bar value={value} color={heat(value)} label={label} />
     </div>
+  );
+}
+
+/** Physical memory as one bar: in use, cached, free, with its legend. */
+export function MemSplit({ m }: { m: Mem }) {
+  const cached = Math.min(m.cached, Math.max(0, m.total - m.used));
+  const free = Math.max(0, m.total - m.used - cached);
+  const parts = [
+    { label: t("In use"), v: m.used, color: "var(--accent)" },
+    { label: t("Cached"), v: cached, color: "var(--series-2)" },
+    { label: t("Free"), v: free, color: "var(--hairline-cool)" },
+  ];
+  return (
+    <>
+      <div className="compose" role="img" aria-label={parts.map((p) => `${p.label} ${bytes(p.v)}`).join(", ")}>
+        {parts.map((p) => (
+          <div key={p.label} style={{ width: `${(p.v / (m.total || 1)) * 100}%`, background: p.color }} />
+        ))}
+      </div>
+      <div className="legend">
+        {parts.map((p) => (
+          <span key={p.label}>
+            <i style={{ background: p.color }} />
+            {p.label}
+          </span>
+        ))}
+      </div>
+    </>
   );
 }

@@ -15,6 +15,7 @@ export const K = {
   mem: "mem",
   commit: "commit",
   netRx: "net.rx",
+  netTx: "net.tx",
   gpu: "gpu",
   gpuVram: "gpu.vram",
   gpuTemp: "gpu.temp",
@@ -35,6 +36,7 @@ export function record(prev: History, s: Snapshot): History {
     [K.mem, percentOf(s.mem.used, s.mem.total)],
     [K.commit, percentOf(s.mem.commit_used, s.mem.commit_limit)],
     [K.netRx, netTotals(s).rx],
+    [K.netTx, netTotals(s).tx],
   ];
   if (s.cpu.mhz != null) samples.push([K.cpuMhz, s.cpu.mhz]);
   const tctl = cpuTemp(s);
