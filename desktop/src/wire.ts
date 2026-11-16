@@ -3,16 +3,37 @@
 
 export type TempKind = "cpu" | "ccd" | "sensor";
 
-export type DeviceId = "core" | "fake";
+export type DeviceId = "core" | "fake" | { monitor: number };
 
-export type ControlId = "autostart" | "level";
+export type ControlId =
+  | "autostart"
+  | "level"
+  | "brightness"
+  | "contrast"
+  | "color_preset"
+  | "red_gain"
+  | "green_gain"
+  | "blue_gain"
+  | "profile"
+  | "save_profile"
+  | "scan"
+  | "display_mode"
+  | "keep_display_mode"
+  | "orientation"
+  | "gpu_brightness"
+  | "gpu_contrast"
+  | "gpu_gamma"
+  | "gpu_red"
+  | "gpu_green"
+  | "gpu_blue"
+  | { vcp: number };
 
-export type ControlValue = boolean | number;
+export type ControlValue = boolean | number | string;
 
 export type DeviceStatus = "ok" | "failed";
 
 // Protocol version, as `PROTOCOL` in the wire crate.
-export const PROTOCOL = 3;
+export const PROTOCOL = 4;
 
 // Seconds between snapshots, as TICK in the wire crate.
 export const TICK_S = 1;
@@ -124,9 +145,14 @@ export type Control = {
 
 export type Device = {
   id: DeviceId;
+  name: string;
   status: DeviceStatus;
   error: string | null;
   controls: Control[];
+  profiles: string[];
+  modes: string[];
+  presets: number[];
+  busy: boolean;
 };
 
 export type Snapshot = {

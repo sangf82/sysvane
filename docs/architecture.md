@@ -22,7 +22,7 @@ sysvane/
 │     ├─ modules/                device modules, compiled in
 │     │  ├─ mod.rs               Module trait, host, static detect() list
 │     │  ├─ config.rs  devices.rs  fake.rs
-│     │  ├─ monitor/ddc.rs       [later] M4, with its default profiles
+│     │  ├─ monitor/             M4: mod (Module), vcp (allowlist + guarded write), profile, ddc (dxva2), profiles/*.json
 │     │  ├─ fan/ rgb/ lcd/ mouse/ keyboard/ headset/   [later] <vendor>.rs each
 │     │  └─ vendors/<vendor>/    [later] protocol shared across kinds (e.g. an AIO's pump, fan, LCD, RGB); no Module impl
 │     ├─ ipc/                    pipe, commands, access, hub

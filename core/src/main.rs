@@ -2,8 +2,6 @@
 #![windows_subsystem = "windows"]
 
 mod ipc;
-// Release builds have no module until M4, so these are unused there.
-#[cfg_attr(not(debug_assertions), allow(dead_code))]
 mod modules;
 mod sensors;
 mod system;
@@ -47,7 +45,7 @@ fn main() {
     log::init();
     log::info(concat!("core ", env!("CARGO_PKG_VERSION"), " started"));
     let hub = Arc::new(hub::Hub::default());
-    let devices = devices::Devices::start(install::autostart_enabled(), modules());
+    let devices = devices::Devices::start(install::autostart_enabled(), modules(), monitors);
     power::watch(devices.clone());
     let d = devices.clone();
     std::thread::spawn(move || commands::serve(d, sysvane_wire::COMMAND_PIPE_NAME));
@@ -65,12 +63,22 @@ fn main() {
     tray::run(for_tray);
 }
 
-/// The compiled-in modules. The fake device exists in debug builds only.
+/// The monitors connected now, numbered in the order Windows lists them.
+fn monitors() -> Vec<modules::Host> {
+    use modules::monitor::{Monitor, profile::Store};
+    let profiles = || Store::new(modules::config::dir().join("monitor"));
+    Monitor::detect(profiles)
+        .into_iter()
+        .map(modules::Host::spawn)
+        .collect()
+}
+
+/// The other compiled-in modules. The fake device exists in debug builds only.
 fn modules() -> Vec<modules::Host> {
-    vec![
-        #[cfg(debug_assertions)]
-        modules::Host::spawn(modules::fake::Fake::new(
-            modules::config::dir().join("fake.toml"),
-        )),
-    ]
+    #[cfg(debug_assertions)]
+    return vec![modules::Host::spawn(modules::fake::Fake::new(
+        modules::config::dir().join("fake.toml"),
+    ))];
+    #[cfg(not(debug_assertions))]
+    Vec::new()
 }

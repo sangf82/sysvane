@@ -1,12 +1,14 @@
 {
+  "schema": 1,
   "name": "Calibrated-Right",
-  "description": "Màn hình Phải (DP2): Brightness 70, Contrast 50, User Mode (R47 G49 B51)",
+  "description": "Màn hình Phải: Brightness 70, Contrast 50, 6500K (R47 G49 B51)",
+  "model": "CVTE",
   "settings": {
     "0x02": 1,
     "0x0C": 70,
     "0x10": 70,
     "0x12": 50,
-    "0x14": 11,
+    "0x14": 5,
     "0x16": 47,
     "0x18": 49,
     "0x1A": 51,

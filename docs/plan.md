@@ -108,7 +108,7 @@ Each milestone ends with something you can run and check. Order matters: M1 and 
 - Fake device harness used by every later module. **Done**: `modules/mod.rs` (host thread + hang watchdog), `modules/fake.rs` (debug builds), `system/power.rs` (resume re-apply). Tested by hand: Level slider in Settings > Test device writes `fake.toml`, and a real sleep logs the re-apply.
 - Done when: a fake module can be controlled from the UI, survives a simulated hang and a simulated resume.  **Met 2026-11-15.**
 
-**M4 DDC module (`0.1.0`)**
+**M4 DDC module (`0.1.0`)** — code written 2026-11-15, real-monitor check pending (`docs/handoff.md`)
 - Moved from M3: per-module profile loader with validation and `schema`, built on `config.rs` once the DDC profile format is fixed.
 - Port from commit `30b7852`: `vcp_catalog.py`, `profiles.py`, `monitor_manager.py` and the safety tests. Profiles in `docs/devices/ddc/profiles/` move next to the module as its defaults.
 - One guarded write function; the rules below; fix the known EDID-by-position issue.

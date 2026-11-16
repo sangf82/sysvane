@@ -114,12 +114,17 @@ mod tests {
             }],
             devices: vec![Device {
                 id: DeviceId::Core,
+                name: String::new(),
                 status: DeviceStatus::Ok,
                 error: None,
                 controls: vec![Control {
                     id: ControlId::Autostart,
                     value: ControlValue::Bool(false),
                 }],
+                profiles: vec![],
+                modes: vec![],
+                presets: vec![],
+                busy: false,
             }],
         }
     }
@@ -208,7 +213,7 @@ mod tests {
 
     #[test]
     fn commands_are_validated_by_type() {
-        let ok = r#"{"protocol":3,"device":"core","control":"autostart","value":true}"#;
+        let ok = r#"{"protocol":4,"device":"core","control":"autostart","value":true}"#;
         let c: Command = serde_json::from_str(ok).unwrap();
         assert_eq!(
             (c.device, c.control, c.value),
@@ -218,11 +223,25 @@ mod tests {
                 ControlValue::Bool(true)
             )
         );
+        let ok = r#"{"protocol":4,"device":{"monitor":1},"control":"profile","value":"Gaming"}"#;
+        let c: Command = serde_json::from_str(ok).unwrap();
+        assert_eq!(
+            (c.device, c.value),
+            (DeviceId::Monitor(1), ControlValue::Text("Gaming".into()))
+        );
+        let ok = r#"{"protocol":4,"device":{"monitor":0},"control":{"vcp":98},"value":40}"#;
+        assert_eq!(
+            serde_json::from_str::<Command>(ok).unwrap().control,
+            ControlId::Vcp(0x62)
+        );
         for bad in [
-            r#"{"protocol":3,"device":"core","control":"autostart","value":true,"path":"x"}"#,
-            r#"{"protocol":3,"device":"gpu","control":"autostart","value":true}"#,
-            r#"{"protocol":3,"device":"core","control":"format","value":true}"#,
-            r#"{"protocol":3,"device":"core","control":"autostart","value":"on"}"#,
+            r#"{"protocol":4,"device":"core","control":"autostart","value":true,"path":"x"}"#,
+            r#"{"protocol":4,"device":"gpu","control":"autostart","value":true}"#,
+            r#"{"protocol":4,"device":{"monitor":256},"control":"brightness","value":1}"#,
+            r#"{"protocol":4,"device":{"monitor":-1},"control":"brightness","value":1}"#,
+            r#"{"protocol":4,"device":"core","control":"format","value":true}"#,
+            r#"{"protocol":4,"device":{"monitor":0},"control":{"vcp":256},"value":1}"#,
+            r#"{"protocol":4,"device":"core","control":"autostart","value":[1]}"#,
             r#"{"device":"core","control":"autostart","value":true}"#,
         ] {
             assert!(serde_json::from_str::<Command>(bad).is_err(), "{bad}");

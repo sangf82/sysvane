@@ -17,27 +17,34 @@ pub struct Devices {
     autostart: AtomicBool,
     error: Mutex<Option<String>>,
     register: fn(bool) -> Result<(), String>,
-    modules: Vec<Host>,
+    modules: Mutex<Vec<Host>>,
+    /// Detects monitors again, for `ControlId::Scan`.
+    scan: fn() -> Vec<Host>,
     tx: SyncSender<Command>,
 }
 
 impl Devices {
-    /// Starts the owner thread. `initial` is what the scheduled task holds now.
-    pub fn start(initial: bool, modules: Vec<Host>) -> Arc<Self> {
-        Self::with(initial, crate::system::install::register, modules)
+    /// Starts the owner thread. `initial` is what the scheduled task holds now. `scan` lists the monitors;
+    /// it runs once here and again on every `ControlId::Scan`.
+    pub fn start(initial: bool, mut modules: Vec<Host>, scan: fn() -> Vec<Host>) -> Arc<Self> {
+        let mut all = scan();
+        all.append(&mut modules);
+        Self::with(initial, crate::system::install::register, all, scan)
     }
 
     fn with(
         initial: bool,
         register: fn(bool) -> Result<(), String>,
         modules: Vec<Host>,
+        scan: fn() -> Vec<Host>,
     ) -> Arc<Self> {
         let (tx, rx) = sync_channel(QUEUE);
         let devices = Arc::new(Self {
             autostart: AtomicBool::new(initial),
             error: Mutex::new(None),
             register,
-            modules,
+            modules: Mutex::new(modules),
+            scan,
             tx,
         });
         let owner = devices.clone();
@@ -65,6 +72,8 @@ impl Devices {
             // A module reports its own failure in its own device entry.
             let sent = self
                 .modules
+                .lock()
+                .unwrap()
                 .iter()
                 .find(|m| m.id() == command.device)
                 .is_some_and(|m| m.set(command.control, command.value));
@@ -79,6 +88,10 @@ impl Devices {
         let result = match (command.device, command.control, command.value) {
             (DeviceId::Core, ControlId::Autostart, ControlValue::Bool(on)) => {
                 self.set_autostart(on)
+            }
+            (DeviceId::Core, ControlId::Scan, ControlValue::Bool(true)) => {
+                self.rescan();
+                Ok(())
             }
             _ => Err("that control does not take this value".to_owned()),
         };
@@ -96,13 +109,24 @@ impl Devices {
         Ok(())
     }
 
+    /// Replaces every monitor with what `scan` finds now. A dropped monitor's thread ends after its call in
+    /// progress and releases its handle there; numbers follow the new order.
+    fn rescan(&self) {
+        let mut found = (self.scan)();
+        crate::system::log::info(&format!("scan: {} monitor(s)", found.len()));
+        let mut modules = self.modules.lock().unwrap();
+        modules.retain(|m| !matches!(m.id(), DeviceId::Monitor(_)));
+        found.append(&mut modules);
+        *modules = found;
+    }
+
     pub fn autostart(&self) -> bool {
         self.autostart.load(Ordering::Relaxed)
     }
 
     /// After sleep or a device change: every module writes its saved state again.
     pub fn resume(&self) {
-        for m in &self.modules {
+        for m in self.modules.lock().unwrap().iter() {
             if !m.reapply() {
                 crate::system::log::error(&format!("re-apply dropped: {:?} is busy", m.id()));
             }
@@ -113,6 +137,11 @@ impl Devices {
         let error = self.error.lock().unwrap().clone();
         let core = Device {
             id: DeviceId::Core,
+            name: String::new(),
+            profiles: Vec::new(),
+            modes: Vec::new(),
+            presets: Vec::new(),
+            busy: false,
             status: if error.is_some() {
                 DeviceStatus::Failed
             } else {
@@ -125,7 +154,7 @@ impl Devices {
             }],
         };
         std::iter::once(core)
-            .chain(self.modules.iter().map(Host::device))
+            .chain(self.modules.lock().unwrap().iter().map(Host::device))
             .collect()
     }
 }
@@ -148,7 +177,7 @@ mod tests {
 
     #[test]
     fn a_command_changes_the_control_and_shows_in_the_snapshot() {
-        let d = Devices::with(false, |_| Ok(()), vec![]);
+        let d = Devices::with(false, |_| Ok(()), vec![], Vec::new);
         assert!(d.submit(cmd(true)));
         wait("autostart on", || d.autostart());
         assert_eq!(d.snapshot()[0].status, DeviceStatus::Ok);
@@ -156,7 +185,7 @@ mod tests {
 
     #[test]
     fn a_failed_command_marks_the_device_failed_and_keeps_the_old_value() {
-        let d = Devices::with(false, |_| Err("no rights".into()), vec![]);
+        let d = Devices::with(false, |_| Err("no rights".into()), vec![], Vec::new);
         assert!(d.submit(cmd(true)));
         wait("failure shown", || {
             d.snapshot()[0].status == DeviceStatus::Failed
@@ -174,6 +203,7 @@ mod tests {
                 Ok(())
             },
             vec![],
+            Vec::new,
         );
         let mut old = cmd(true);
         old.protocol = PROTOCOL - 1;
@@ -195,7 +225,7 @@ mod tests {
     fn a_hung_module_does_not_stop_the_core_and_resume_reaches_every_module() {
         let probe = Probe::default();
         let (hang, reapplied) = (probe.hang.clone(), probe.reapplied.clone());
-        let d = Devices::with(false, |_| Ok(()), vec![Host::spawn(probe)]);
+        let d = Devices::with(false, |_| Ok(()), vec![Host::spawn(probe)], Vec::new);
         hang.store(true, Ordering::SeqCst);
         assert!(d.submit(fake_cmd(20)));
         assert!(d.submit(cmd(true)));

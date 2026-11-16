@@ -22,10 +22,17 @@ pub fn load<T: DeserializeOwned + Default>(path: &Path) -> T {
 
 pub fn save<T: Serialize>(path: &Path, value: &T) -> Result<(), String> {
     let text = toml::to_string(value).map_err(|e| e.to_string())?;
+    write_atomic(path, text.as_bytes())
+}
+
+/// Writes a temporary file and renames it over `path`, so a crash leaves the old file or the new one.
+pub fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
-    std::fs::write(path, text).map_err(|e| e.to_string())
+    let tmp = path.with_extension("tmp");
+    std::fs::write(&tmp, bytes).map_err(|e| e.to_string())?;
+    std::fs::rename(&tmp, path).map_err(|e| e.to_string())
 }
 
 #[cfg(test)]

@@ -14,7 +14,7 @@ pub const FLYOUT_ARG: &str = "--flyout";
 
 /// Version of the pipe protocol: the snapshot and, later, the commands. Raise it when either changes
 /// shape. The UI refuses to talk to a core that reports another number.
-pub const PROTOCOL: u32 = 3;
+pub const PROTOCOL: u32 = 4;
 
 /// Time between snapshots. The UI keeps a fixed number of them, so its "2 minutes" labels depend on this.
 pub const TICK: Duration = Duration::from_secs(1);

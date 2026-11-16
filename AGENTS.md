@@ -13,7 +13,7 @@ Very low-RAM, tray-first Windows app replacing ASUS Armoury Crate and vendor dev
 
 - `core/` — `sysvane-core`, the headless background program. `src/sensors/` (generic monitoring), `src/ipc/` (pipes, commands, access), `src/system/` (tray, install, power, workers, Win32 helpers), `src/modules/` (device module host, config, fake device). `assets/`: tray icon, `pawnio/` driver module.
 - Device modules: `core/src/modules/<kind>/<vendor>.rs` (kind: fan, rgb, lcd, mouse, keyboard, monitor, headset), each with `detect()`, listed statically in `modules/mod.rs`. A vendor protocol shared across kinds goes in `vendors/<vendor>/` with no `Module` impl. Board variants are data profiles. No folder until its first real module.
-- `desktop/` — `sysvane-ui`, Tauri 2 + React/Vite. Started on demand, exits when closed, never touches hardware. `src/pages/`, `src/components/`, `src/lib/`; Tauri shell in `src-tauri/src/` (`core_proc`, `relay`, `window`).
+- `desktop/` — `sysvane-ui`, Tauri 2 + React/Vite. Started on demand, exits when closed, never touches hardware. `src/pages/`, `src/components/`, `src/lib/`; Tauri shell in `src-tauri/src/` (`core_proc`, `relay`, `window`, `icon`: exe icons for the process list).
 - `wire/` — `sysvane-wire`, all the core and UI share: pipe name, process names, snapshot types (`consts`, `command`, `snapshot`). `desktop/src/wire.ts` mirrors them; a test reads it by path and fails if field names differ.
 - `docs/` — `architecture.md` (tree and rules), `handoff.md` (work in progress: read it first, update it when a step ends), `plan.md`, `devices/ddc/` (calibration, VCP notes, profiles for the future Rust DDC module).
 - `DESIGN.md` — UI design system.
@@ -53,8 +53,8 @@ A wrong DDC write blacks out the display, and DDC/CI has no undo.
 
 ## Calibration notes
 
-- CVTE scalers (Acer AL258Q) lock the RGB gain DAC while a factory color preset is active. Write `0x14 = 11` (User) before `0x16`/`0x18`/`0x1A`.
-- Left panel: `0x14=5`, R50 G50 B50. Right panel: `0x14=11`, R47 G49 B51. Both: brightness 70, contrast 50.
+- In picture mode 3 these AL258Q take colour preset 5 only over DDC (capabilities `14(05)`; writes of 1, 4 and 11 are ignored, 2026-11-16). Gains are written and read back at preset 5; the older note that preset 5 locks the gain DAC is not yet re-checked by eye.
+- Left panel: `0x14=5`, R50 G50 B50. Right panel: `0x14=5`, R47 G49 B51. Both: brightness 70, contrast 50.
 - Details: `docs/devices/ddc/CALIBRATION.md`.
 
 ## Testing the UI

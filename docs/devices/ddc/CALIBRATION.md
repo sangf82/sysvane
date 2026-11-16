@@ -2,6 +2,8 @@
 
 Tài liệu ghi nhận quy trình cân chỉnh màu sắc phần cứng (DDC/CI) cho hệ thống 2 màn hình **Acer AL258Q** (Panel Fast IPS 320Hz, Controller CVTE, Firmware 46507).
 
+> **Cập nhật 2026-11-16:** ở picture mode 3, cả hai màn chỉ khai báo và chỉ nhận preset `0x14 = 5` qua DDC (ghi 1, 4, 11 đều bị bỏ qua). Profile `Calibrated-Right` giờ dùng `0x14 = 5` với R47 G49 B51. Gain ghi và đọc lại đúng ở preset 5; nhận định "preset 5 khóa DAC" bên dưới chưa được kiểm tra lại bằng mắt.
+
 ---
 
 ## 1. Thông Số Cấu Hình Cân Màu Chuẩn (Đã Lưu)

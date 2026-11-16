@@ -6,8 +6,9 @@ pub mod config;
 pub mod devices;
 #[cfg(debug_assertions)]
 pub mod fake;
+pub mod monitor;
 
-use std::sync::mpsc::{SyncSender, sync_channel};
+use std::sync::mpsc::{RecvTimeoutError, SyncSender, sync_channel};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use sysvane_wire::{Control, ControlId, ControlValue, Device, DeviceId, DeviceStatus};
@@ -19,7 +20,33 @@ const QUEUE: usize = 4;
 
 pub trait Module: Send + 'static {
     fn id(&self) -> DeviceId;
+    /// Shown in the UI. Empty when the UI names the device itself.
+    fn name(&self) -> String {
+        String::new()
+    }
+    /// First call on the module's own thread, under the watchdog: read the device here, not in `new`.
+    fn start(&mut self) -> Result<(), String> {
+        Ok(())
+    }
     fn controls(&self) -> Vec<Control>;
+    fn profiles(&self) -> Vec<String> {
+        Vec::new()
+    }
+    /// Choices for a control that takes one of a list, such as a monitor's display modes.
+    fn modes(&self) -> Vec<String> {
+        Vec::new()
+    }
+    /// Colour presets the device lists. Empty when it lists none.
+    fn presets(&self) -> Vec<u16> {
+        Vec::new()
+    }
+    /// How long until the module wants `tick` without a job, for work on a clock such as a revert.
+    fn wake(&self) -> Option<Duration> {
+        None
+    }
+    fn tick(&mut self) -> Result<(), String> {
+        Ok(())
+    }
     /// Validates `value` and writes it. The module owns its device's safety rules.
     fn set(&mut self, control: ControlId, value: ControlValue) -> Result<(), String>;
     /// After sleep or a device change: write the saved state to the device again.
@@ -27,13 +54,20 @@ pub trait Module: Send + 'static {
 }
 
 enum Job {
+    Start,
     Set(ControlId, ControlValue),
     Reapply,
+    /// Not queued: the module's `wake` ran out.
+    Tick,
 }
 
 #[derive(Default)]
 struct Shared {
+    name: String,
     controls: Vec<Control>,
+    profiles: Vec<String>,
+    modes: Vec<String>,
+    presets: Vec<u16>,
     error: Option<String>,
     /// Start of the call in progress, if any.
     busy_since: Option<Instant>,
@@ -53,26 +87,50 @@ impl Host {
 
     fn with_deadline(mut module: impl Module, deadline: Duration) -> Self {
         let id = module.id();
-        let shared = Arc::new(Mutex::new(Shared {
-            controls: module.controls(),
-            ..Shared::default()
-        }));
+        let shared = Arc::new(Mutex::new(Shared::default()));
         let (tx, rx) = sync_channel(QUEUE);
+        tx.try_send(Job::Start)
+            .expect("an empty queue takes the first job");
         let state = shared.clone();
         std::thread::spawn(move || {
-            while let Ok(job) = rx.recv() {
+            loop {
+                let job = match module.wake() {
+                    None => rx.recv().map_err(|_| RecvTimeoutError::Disconnected),
+                    Some(wait) => rx.recv_timeout(wait),
+                };
+                let job = match job {
+                    Ok(job) => job,
+                    Err(RecvTimeoutError::Timeout) => Job::Tick,
+                    Err(RecvTimeoutError::Disconnected) => break,
+                };
+                let tick = matches!(job, Job::Tick);
                 state.lock().unwrap().busy_since = Some(Instant::now());
                 let result = match job {
+                    Job::Start => module.start(),
                     Job::Set(control, value) => module.set(control, value),
                     Job::Reapply => module.reapply(),
+                    Job::Tick => module.tick(),
                 };
                 if let Err(e) = &result {
                     crate::system::log::error(&format!("{id:?}: {e}"));
                 }
-                let controls = module.controls();
+                let (name, controls, profiles, modes, presets) = (
+                    module.name(),
+                    module.controls(),
+                    module.profiles(),
+                    module.modes(),
+                    module.presets(),
+                );
                 let mut s = state.lock().unwrap();
+                s.name = name;
                 s.controls = controls;
-                s.error = result.err();
+                s.profiles = profiles;
+                s.modes = modes;
+                s.presets = presets;
+                // A quiet tick keeps the last error on show; only its own failure replaces it.
+                if !(tick && result.is_ok()) {
+                    s.error = result.err();
+                }
                 s.busy_since = None;
             }
         });
@@ -107,6 +165,7 @@ impl Host {
         };
         Device {
             id: self.id,
+            name: s.name.clone(),
             status: if error.is_some() {
                 DeviceStatus::Failed
             } else {
@@ -114,6 +173,10 @@ impl Host {
             },
             error,
             controls: s.controls.clone(),
+            profiles: s.profiles.clone(),
+            modes: s.modes.clone(),
+            presets: s.presets.clone(),
+            busy: s.busy_since.is_some(),
         }
     }
 }
@@ -170,21 +233,22 @@ pub mod tests {
         }
     }
 
-    fn level(h: &Host) -> ControlValue {
-        h.device().controls[0].value
+    /// None until the module has started.
+    fn level(h: &Host) -> Option<ControlValue> {
+        h.device().controls.first().map(|c| c.value.clone())
     }
 
     #[test]
     fn a_set_shows_in_the_device_and_a_bad_value_marks_it_failed() {
         let h = Host::spawn(Probe::default());
         assert!(h.set(ControlId::Level, ControlValue::Int(40)));
-        wait("level 40", || level(&h) == ControlValue::Int(40));
+        wait("level 40", || level(&h) == Some(ControlValue::Int(40)));
         assert_eq!(h.device().status, DeviceStatus::Ok);
         assert!(h.set(ControlId::Level, ControlValue::Int(900)));
         wait("failure shown", || {
             h.device().status == DeviceStatus::Failed
         });
-        assert_eq!(level(&h), ControlValue::Int(40), "old value kept");
+        assert_eq!(level(&h), Some(ControlValue::Int(40)), "old value kept");
     }
 
     #[test]

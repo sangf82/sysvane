@@ -9,21 +9,23 @@ import { type Msg, resolved, t, useLang } from "./lib/i18n";
 import { RES } from "./lib/metrics";
 import { Overview } from "./pages/Overview";
 import { Performance } from "./pages/Performance";
+import { Displays } from "./pages/Displays";
 import { Processes } from "./pages/Processes";
 import { Settings } from "./pages/Settings";
 import { getState, subscribe } from "./lib/store";
 import { install, useUpdate } from "./lib/update";
 import { useTheme } from "./lib/theme";
 import { PROTOCOL } from "./wire";
-import { Icon, Logo, type IconName } from "./components/layout";
+import { Icon, type IconName } from "./components/layout";
 import "./styles.css";
 
-type Page = "overview" | "performance" | "processes" | "settings";
+type Page = "overview" | "performance" | "processes" | "displays" | "settings";
 
 const NAV: { page: Page; label: Msg; icon: IconName }[] = [
   { page: "overview", label: "Overview", icon: "overview" },
   { page: "performance", label: "Performance", icon: "performance" },
   { page: "processes", label: "Processes", icon: "processes" },
+  { page: "displays", label: "Displays", icon: "displays" },
 ];
 
 function Waiting({ connected, onStart }: { connected: boolean; onStart: (r: CoreStart) => void }) {
@@ -96,10 +98,6 @@ export default function App() {
     <div className="shell">
       <IconPathStyle />
       <aside className="sidebar">
-        <div className="brand">
-          <Logo />
-          <span className="label">SysVane</span>
-        </div>
         <nav aria-label={t("Pages")}>
           {NAV.map((n) => (
             <AnimateIcon key={n.page} animateOnHover asChild>
@@ -154,7 +152,7 @@ export default function App() {
             <div className={st.connected ? "" : "stale"}>
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div key={page} initial={{ opacity: 0 }} animate={{ opacity: 1, transition: transition.panelIn }} exit={{ opacity: 0, transition: transition.panelOut }}>
-                  {page === "overview" ? <Overview s={s} h={st.hist} open={open} /> : page === "performance" ? <Performance s={s} h={st.hist} sel={resource} setSel={setResource} /> : page === "processes" ? <Processes list={s.processes} /> : <Settings update={update} recheck={recheck} devices={s.devices} />}
+                  {page === "overview" ? <Overview s={s} h={st.hist} open={open} /> : page === "performance" ? <Performance s={s} h={st.hist} sel={resource} setSel={setResource} /> : page === "processes" ? <Processes list={s.processes} /> : page === "displays" ? <Displays devices={s.devices} /> : <Settings update={update} recheck={recheck} devices={s.devices} />}
                 </motion.div>
               </AnimatePresence>
             </div>

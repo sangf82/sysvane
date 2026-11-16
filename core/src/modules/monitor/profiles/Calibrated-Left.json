@@ -1,6 +1,8 @@
 {
+  "schema": 1,
   "name": "Calibrated-Left",
   "description": "Màn hình Trái (DP1): Brightness 70, Contrast 50, D65 6500K (R50 G50 B50)",
+  "model": "CVTE",
   "settings": {
     "0x02": 1,
     "0x0C": 70,
