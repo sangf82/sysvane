@@ -12,6 +12,8 @@
   --hairline-cool: light-dark(#ededed, #2a2a2a);
   --primary: #3ecf8e;
   --primary-deep: #24b47e;
+  /* Emerald dark enough for 3:1 against the light surfaces (non-text contrast); the bright one on dark */
+  --control: light-dark(#1f9d6a, #3ecf8e);
   --on-primary: #171717;
   --accent: var(--primary);
   --series-2: var(--mute);
@@ -300,21 +302,21 @@ td.zero { color: var(--mute); }
 .mgroups { display: flex; flex-direction: column; gap: var(--md); }
 
 .mpanel > p.muted { margin: 0; font-size: 12px; }
-.sechead { display: flex; align-items: center; gap: var(--sm); min-height: 28px; padding-bottom: var(--sm); border-bottom: 1px solid var(--hairline); }
+.sechead { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sm); min-height: 28px; padding-bottom: var(--sm); border-bottom: 1px solid var(--hairline); }
 .sechead .muted { font-size: 12px; }
 .sechead > .icon { flex: none; color: var(--mute); }
 .sechead .btn, .sechead .seg { margin-left: auto; align-self: center; }
 .sechead .seg + .btn { margin-left: 0; }
 .mslider { display: grid; grid-template-columns: minmax(96px, 11em) minmax(0, 1fr) 6ch; gap: var(--md); align-items: center; }
 /* Drawn from the theme tokens: the native track is near black on a light page */
-.mslider input[type="range"] { appearance: none; width: 100%; height: 4px; margin: 0; border-radius: 2px; background: linear-gradient(to right, var(--primary) var(--pct, 0%), var(--hairline-strong) var(--pct, 0%)); cursor: pointer; }
-.mslider input[type="range"]::-webkit-slider-thumb { appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--canvas); border: 2px solid var(--primary-deep); box-shadow: 0 1px 2px rgb(0 0 0 / 0.2); transition: scale 150ms var(--ease); }
+.mslider input[type="range"] { appearance: none; width: 100%; height: 4px; margin: 0; border-radius: 2px; background: linear-gradient(to right, var(--control) var(--pct, 0%), var(--hairline-strong) var(--pct, 0%)); cursor: pointer; }
+.mslider input[type="range"]::-webkit-slider-thumb { appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--canvas); border: 2px solid var(--control); box-shadow: 0 1px 2px color-mix(in srgb, var(--ink) 20%, transparent); transition: scale 150ms var(--ease); }
 .mslider input[type="range"]:hover::-webkit-slider-thumb { scale: 1.15; }
 .mslider input[type="range"]:focus-visible { outline: 2px solid var(--primary); outline-offset: 6px; }
 .mnum { width: 100%; box-sizing: border-box; padding: 2px var(--xs); text-align: right; background: transparent; color: var(--ink); border: 1px solid transparent; border-radius: var(--r-xs); font: inherit; font-variant-numeric: tabular-nums; appearance: textfield; cursor: text; }
 .mnum::-webkit-inner-spin-button, .mnum::-webkit-outer-spin-button { appearance: none; margin: 0; }
 .mnum:hover { border-color: var(--hairline-strong); }
-.mnum:focus { border-color: var(--primary-deep); background: var(--canvas); outline: none; }
+.mnum:focus { border-color: var(--control); background: var(--canvas); outline: 2px solid var(--primary); outline-offset: 2px; }
 .mfield { display: flex; align-items: center; justify-content: space-between; gap: var(--sm); }
 .mfield .dd-trigger { flex: 1; min-width: 0; }
 .minput { flex: 1; min-width: 0; padding: var(--xs) var(--sm); background: var(--canvas); color: var(--ink); border: 1px solid var(--hairline-strong); border-radius: var(--r-sm); font: inherit; font-size: 12px; }
