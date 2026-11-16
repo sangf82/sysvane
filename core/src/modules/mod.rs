@@ -14,7 +14,7 @@ use std::time::{Duration, Instant};
 use sysvane_wire::{Control, ControlId, ControlValue, Device, DeviceId, DeviceStatus};
 
 /// A call that takes longer than this marks the module failed.
-const DEADLINE: Duration = Duration::from_secs(5);
+pub(crate) const DEADLINE: Duration = Duration::from_secs(5);
 /// Jobs waiting for a busy module. Beyond this they are dropped, so a hung module cannot grow a queue.
 const QUEUE: usize = 4;
 
@@ -78,9 +78,26 @@ pub struct Host {
     deadline: Duration,
     shared: Arc<Mutex<Shared>>,
     tx: SyncSender<Job>,
+    thread: std::thread::JoinHandle<()>,
 }
 
 impl Host {
+    /// Ends the module after its queued jobs and waits up to `wait` for its thread, so the next owner of the
+    /// device starts only once this one has let go, and the module's `Drop` (a display-mode revert) runs.
+    /// False when the thread is still in a call: a hung module cannot be stopped, only left behind.
+    pub fn stop(self, wait: Duration) -> bool {
+        let Self { tx, thread, .. } = self;
+        drop(tx);
+        let start = Instant::now();
+        while !thread.is_finished() {
+            if start.elapsed() > wait {
+                return false;
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        true
+    }
+
     pub fn spawn(module: impl Module) -> Self {
         Self::with_deadline(module, DEADLINE)
     }
@@ -92,7 +109,7 @@ impl Host {
         tx.try_send(Job::Start)
             .expect("an empty queue takes the first job");
         let state = shared.clone();
-        std::thread::spawn(move || {
+        let thread = std::thread::spawn(move || {
             loop {
                 let job = match module.wake() {
                     None => rx.recv().map_err(|_| RecvTimeoutError::Disconnected),
@@ -139,6 +156,7 @@ impl Host {
             deadline,
             shared,
             tx,
+            thread,
         }
     }
 
@@ -231,6 +249,23 @@ pub mod tests {
             );
             std::thread::sleep(Duration::from_millis(5));
         }
+    }
+
+    #[test]
+    fn stop_waits_for_the_thread_and_gives_up_on_a_hung_one() {
+        let h = Host::spawn(Probe::default());
+        assert!(h.stop(Duration::from_secs(2)), "an idle module stops");
+        let probe = Probe::default();
+        let hang = probe.hang.clone();
+        let h = Host::spawn(probe);
+        hang.store(true, Ordering::SeqCst);
+        assert!(h.set(ControlId::Level, ControlValue::Int(1)));
+        wait("busy", || h.device().busy);
+        assert!(
+            !h.stop(Duration::from_millis(50)),
+            "a hung module is left behind"
+        );
+        hang.store(false, Ordering::SeqCst);
     }
 
     /// None until the module has started.

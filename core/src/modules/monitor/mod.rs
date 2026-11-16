@@ -6,6 +6,7 @@
 //! may have reset it.
 
 pub mod ddc;
+pub mod edid;
 pub mod gamma;
 pub mod mode;
 pub mod profile;
@@ -60,6 +61,8 @@ pub struct Monitor<B: Bus> {
     index: u8,
     display: String,
     caps: vcp::Caps,
+    /// The monitor's own name and id; the capabilities only name the scaler chip.
+    edid: Option<edid::Edid>,
     bus: B,
     store: Store,
     /// Only values read from the monitor, with its maximum; nothing is shown before it is read.
@@ -89,13 +92,33 @@ impl<B: Bus> Monitor<B> {
             trial: None,
             trial_for: mode::TRIAL,
             gpu: gamma::Gpu::default(),
+            edid: None,
         }
     }
 
-    /// shortcut: keyed by the Windows display number, which can change when monitors are re-plugged; key by
-    /// EDID serial once the module reads it.
+    /// Keyed by the EDID id, so the colour follows the monitor to another port; by the display number only
+    /// when the EDID has no real serial (two of one model would otherwise share a file).
     fn gpu_file(&self) -> std::path::PathBuf {
-        self.store.file(&format!("gpu-{}.toml", self.display))
+        let key = self
+            .edid
+            .as_ref()
+            .and_then(|e| e.id.as_ref())
+            .unwrap_or(&self.display);
+        self.store.file(&format!("gpu-{key}.toml"))
+    }
+
+    /// Dims the screen three times through the gamma ramp, so the user sees which monitor a card is, then
+    /// puts the ramp back. Any monitor, no DDC write.
+    fn identify(&mut self) -> Result<(), String> {
+        let mut dim = self.gpu;
+        dim.brightness = 15;
+        for _ in 0..3 {
+            self.bus.set_gamma(&dim.ramp())?;
+            std::thread::sleep(Duration::from_millis(250));
+            self.bus.set_gamma(&self.gpu.ramp())?;
+            std::thread::sleep(Duration::from_millis(250));
+        }
+        Ok(())
     }
 
     /// Writes the GPU colour again, as Windows drops it on a mode change, sleep or a full-screen game.
@@ -151,13 +174,23 @@ impl<B: Bus> Monitor<B> {
     }
 
     fn end_trial(&mut self, keep: bool) -> Result<(), String> {
-        let Some((before, _)) = self.trial.take() else {
+        let Some((before, at)) = self.trial.take() else {
             return Ok(());
         };
-        match (keep, self.mode) {
+        let result = match (keep, self.mode) {
             (true, Some(now)) => self.bus.set_mode(now, self.turn, true),
             _ => self.bus.set_mode(before.mode, before.turn, false),
+        };
+        // A failed revert is tried again on the next tick; a failed keep still reverts when its time is up.
+        if result.is_err() {
+            let retry = if keep {
+                at
+            } else {
+                Instant::now() + Duration::from_secs(1)
+            };
+            self.trial = Some((before, retry));
         }
+        result
     }
 
     /// A GPU colour value from the UI. The ramp is written first and saved only once Windows took it.
@@ -170,6 +203,14 @@ impl<B: Bus> Monitor<B> {
         *gpu_value(&mut next, control).ok_or("not a GPU colour setting")? = n;
         self.bus.set_gamma(&next.ramp())?;
         self.gpu = next;
+        crate::modules::config::save(&self.gpu_file(), &self.gpu)
+    }
+
+    /// Every GPU colour value back to neutral in one command, so a reset never half-lands in a full queue.
+    fn reset_gpu(&mut self) -> Result<(), String> {
+        let neutral = gamma::Gpu::default();
+        self.bus.set_gamma(&neutral.ramp())?;
+        self.gpu = neutral;
         crate::modules::config::save(&self.gpu_file(), &self.gpu)
     }
 
@@ -224,7 +265,8 @@ impl<B: Bus> Module for Monitor<B> {
     }
 
     fn name(&self) -> String {
-        match &self.caps.model {
+        let edid = self.edid.as_ref().and_then(|e| e.name.as_ref());
+        match edid.or(self.caps.model.as_ref()) {
             Some(m) => format!("{m} · {}", self.display),
             None => self.display.clone(),
         }
@@ -237,6 +279,7 @@ impl<B: Bus> Module for Monitor<B> {
             .capabilities()
             .map(|c| vcp::Caps::parse(&c))
             .unwrap_or_default();
+        self.edid = self.bus.edid().and_then(|b| edid::Edid::parse(&b));
         self.gpu = crate::modules::config::load::<gamma::Gpu>(&self.gpu_file()).clamped();
         let gpu = self.apply_gpu();
         self.refresh().and(gpu)
@@ -331,8 +374,14 @@ impl<B: Bus> Module for Monitor<B> {
             self.read_mode();
             return result.and(self.apply_gpu());
         }
+        if control == ControlId::Identify {
+            return self.identify();
+        }
         if GPU.contains(&control) {
             return self.set_gpu(control, value);
+        }
+        if control == ControlId::GpuReset {
+            return self.reset_gpu();
         }
         let result = match control {
             ControlId::Profile => {
@@ -357,7 +406,17 @@ impl<B: Bus> Module for Monitor<B> {
                     return Err("a monitor setting is a whole number".to_owned());
                 };
                 let n = u16::try_from(n).map_err(|_| format!("{n} is out of range"))?;
-                vcp::write(&mut self.bus, code, n).map_err(|e| e.to_string())
+                let result = vcp::write(&mut self.bus, code, n).map_err(|e| e.to_string());
+                // One setting reads back only itself (each DDC read is ~50 ms); a preset can move the
+                // gains, so it reads everything.
+                if code != vcp::PRESET {
+                    match self.bus.read(code) {
+                        Ok(v) => self.values.insert(code, v),
+                        Err(_) => self.values.remove(&code),
+                    };
+                    return result;
+                }
+                result
             }
         };
         // Show what the monitor holds now, also after a partial failure.
@@ -404,6 +463,34 @@ mod tests {
     }
 
     #[test]
+    fn the_edid_names_the_monitor_and_keys_its_gpu_colour() {
+        let mut m = modes();
+        m.bus.caps = Some("(model(CVTE)vcp(10))".into());
+        m.bus.edid = Some(edid::tests::edid(b"AL258Q", b"SN1"));
+        m.start().unwrap();
+        assert_eq!(
+            m.name(),
+            "AL258Q · Display 2",
+            "EDID name over the scaler's"
+        );
+        m.set(ControlId::GpuRed, ControlValue::Int(90)).unwrap();
+        assert!(m.store.file("gpu-ACR0A4B-SN1.toml").exists());
+    }
+
+    #[test]
+    fn identify_blinks_and_puts_the_colour_back() {
+        let mut m = modes();
+        m.set(ControlId::GpuBlue, ControlValue::Int(90)).unwrap();
+        let mine = m.bus.ramps[0];
+        m.set(ControlId::Identify, ControlValue::Bool(true))
+            .unwrap();
+        assert_eq!(m.bus.ramps.len(), 7);
+        assert_ne!(m.bus.ramps[1], mine, "dimmed");
+        assert_eq!(m.bus.ramps.last(), Some(&mine));
+        assert!(m.bus.writes.is_empty(), "no DDC write");
+    }
+
+    #[test]
     fn gpu_colour_is_written_saved_and_written_again() {
         let mut m = modes();
         assert_eq!(value(&m, ControlId::GpuBlue), Some(ControlValue::Int(100)));
@@ -434,6 +521,32 @@ mod tests {
             .set(ControlId::GpuBlue, ControlValue::Int(100))
             .unwrap();
         assert_eq!(again.bus.ramps.last(), Some(&gamma::Gpu::default().ramp()));
+    }
+
+    #[test]
+    fn a_failed_revert_stays_on_trial_and_is_tried_again() {
+        let mut m = modes();
+        m.trial_for = Duration::ZERO;
+        m.set(ControlId::Orientation, ControlValue::Int(1)).unwrap();
+        m.bus.mode_fails = true;
+        assert!(m.tick().is_err());
+        assert!(m.wake().is_some(), "still on trial, so another tick comes");
+        m.bus.mode_fails = false;
+        m.trial.as_mut().unwrap().1 = Instant::now();
+        m.tick().unwrap();
+        assert_eq!(m.bus.turn, 0, "reverted on the retry");
+        assert!(m.wake().is_none());
+    }
+
+    #[test]
+    fn a_gpu_reset_is_one_command() {
+        let mut m = modes();
+        m.set(ControlId::GpuRed, ControlValue::Int(70)).unwrap();
+        m.set(ControlId::GpuGamma, ControlValue::Int(30)).unwrap();
+        m.set(ControlId::GpuReset, ControlValue::Bool(true))
+            .unwrap();
+        assert_eq!(m.bus.ramps.last(), Some(&gamma::Gpu::default().ramp()));
+        assert_eq!(value(&m, ControlId::GpuRed), Some(ControlValue::Int(100)));
     }
 
     #[test]

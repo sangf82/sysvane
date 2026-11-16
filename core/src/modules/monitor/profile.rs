@@ -56,8 +56,11 @@ impl Profile {
             .collect();
         entries.sort_by_key(|&(code, _)| match code {
             vcp::PICTURE_MODE => 0,
-            vcp::PRESET => 1,
-            _ => 2,
+            // A colour-temperature request can switch some scalers to their temperature mode, so it goes
+            // before the preset, never between the preset and the gains.
+            0x0C => 1,
+            vcp::PRESET => 2,
+            _ => 3,
         });
         entries
     }

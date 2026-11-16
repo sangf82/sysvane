@@ -46,6 +46,10 @@ pub enum ControlId {
     GpuRed,
     GpuGreen,
     GpuBlue,
+    /// Every GPU colour value back to neutral (`Bool(true)`).
+    GpuReset,
+    /// Dims the monitor three times through the GPU gamma ramp (`Bool(true)`), to tell monitors apart.
+    Identify,
     /// A monitor image setting by VCP code, for a code the monitor lists beyond the named ones, such as
     /// volume or 6-axis saturation. A percentage of its maximum; the core takes only listed, allowlisted codes.
     Vcp(u8),

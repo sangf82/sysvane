@@ -139,6 +139,10 @@ pub trait Bus: Send + 'static {
     fn turn(&mut self) -> Option<u8> {
         None
     }
+    /// The monitor's EDID as Windows stored it.
+    fn edid(&mut self) -> Option<Vec<u8>> {
+        None
+    }
     /// Only `Monitor` calls it, with a mode from `modes` sized for `turn`. `keep` saves it past this session.
     fn set_mode(&mut self, _: Mode, _turn: u8, _keep: bool) -> Result<(), String> {
         Err("this display has no mode to set".to_owned())
@@ -215,8 +219,11 @@ pub struct Fake {
     pub mode_writes: Vec<(Mode, bool)>,
     pub turn: u8,
     pub caps: Option<String>,
+    pub edid: Option<Vec<u8>>,
     /// Every gamma ramp written.
     pub ramps: Vec<super::gamma::Ramp>,
+    /// Makes `set_mode` fail, as a driver that refuses a change would.
+    pub mode_fails: bool,
 }
 
 #[cfg(test)]
@@ -267,7 +274,13 @@ impl Bus for Fake {
     fn turn(&mut self) -> Option<u8> {
         self.mode.map(|_| self.turn)
     }
+    fn edid(&mut self) -> Option<Vec<u8>> {
+        self.edid.clone()
+    }
     fn set_mode(&mut self, m: Mode, turn: u8, keep: bool) -> Result<(), String> {
+        if self.mode_fails {
+            return Err("refused".to_owned());
+        }
         self.mode_writes.push((m, keep));
         self.mode = Some(m);
         self.turn = turn;

@@ -6,11 +6,14 @@
 use std::fmt;
 use std::str::FromStr;
 use std::time::Duration;
+use windows_sys::Win32::Foundation::{LPARAM, RECT};
 use windows_sys::Win32::Graphics::Gdi::{
     CDS_TEST, CDS_UPDATEREGISTRY, ChangeDisplaySettingsExW, DEVMODEW, DISP_CHANGE_SUCCESSFUL,
     DM_DISPLAYFREQUENCY, DM_DISPLAYORIENTATION, DM_INTERLACED, DM_PELSHEIGHT, DM_PELSWIDTH,
-    ENUM_CURRENT_SETTINGS, EnumDisplaySettingsW,
+    ENUM_CURRENT_SETTINGS, EnumDisplayMonitors, EnumDisplaySettingsW, GetMonitorInfoW, HDC,
+    HMONITOR, MONITORINFO, MONITORINFOEXW,
 };
+use windows_sys::core::BOOL;
 
 /// As long as Windows Settings waits before it reverts.
 pub const TRIAL: Duration = Duration::from_secs(15);
@@ -105,7 +108,7 @@ pub fn set(device: &[u16], m: Mode, turn: u8, keep: bool) -> Result<(), String> 
     dm.dmPelsHeight = m.height;
     dm.dmDisplayFrequency = m.hz;
     let flags = if keep { CDS_UPDATEREGISTRY } else { 0 };
-    for flags in [CDS_TEST, flags] {
+    let change = |flags| {
         // SAFETY: valid NUL-terminated name and DEVMODEW; no window, no extra parameter.
         let r = unsafe {
             ChangeDisplaySettingsExW(
@@ -116,11 +119,59 @@ pub fn set(device: &[u16], m: Mode, turn: u8, keep: bool) -> Result<(), String> 
                 std::ptr::null(),
             )
         };
-        if r != DISP_CHANGE_SUCCESSFUL {
-            return Err(format!("Windows refused {m} (code {r})"));
+        (r == DISP_CHANGE_SUCCESSFUL)
+            .then_some(())
+            .ok_or_else(|| format!("Windows refused {m} (code {r})"))
+    };
+    change(CDS_TEST)?;
+    change(flags)?;
+    // Once (2026-11-16) a revert to landscape was reported done while the desktop stayed in portrait, so
+    // the desktop's own shape is checked and the change made once more if it differs.
+    let portrait = m.height > m.width;
+    if desktop_portrait(device).is_some_and(|p| p != portrait) {
+        crate::system::log::error(&format!(
+            "{m}: the desktop did not follow; setting it again"
+        ));
+        change(flags)?;
+        if desktop_portrait(device).is_some_and(|p| p != portrait) {
+            return Err(format!("Windows took {m} but the desktop did not change"));
         }
     }
     Ok(())
+}
+
+/// Whether the desktop on this display is taller than wide, from the monitor rectangle Windows lays out.
+fn desktop_portrait(device: &[u16]) -> Option<bool> {
+    unsafe extern "system" fn each(m: HMONITOR, _: HDC, _: *mut RECT, found: LPARAM) -> BOOL {
+        // SAFETY: `found` is the `Vec` passed below, alive for the whole enumeration.
+        unsafe { (*(found as *mut Vec<HMONITOR>)).push(m) };
+        1
+    }
+    let mut monitors: Vec<HMONITOR> = Vec::new();
+    // SAFETY: the callback only pushes into `monitors`, which outlives the call.
+    unsafe {
+        EnumDisplayMonitors(
+            std::ptr::null_mut(),
+            std::ptr::null(),
+            Some(each),
+            &mut monitors as *mut _ as LPARAM,
+        )
+    };
+    let name = &device[..device.len().saturating_sub(1)];
+    monitors.into_iter().find_map(|hm| {
+        // SAFETY: MONITORINFOEXW is plain data; cbSize says which struct it is.
+        let mut info: MONITORINFOEXW = unsafe { std::mem::zeroed() };
+        info.monitorInfo.cbSize = size_of::<MONITORINFOEXW>() as u32;
+        // SAFETY: `info` is a MONITORINFOEXW with cbSize set.
+        if unsafe { GetMonitorInfoW(hm, &mut info as *mut _ as *mut MONITORINFO) } == 0 {
+            return None;
+        }
+        let len = info.szDevice.iter().position(|&c| c == 0).unwrap_or(32);
+        (&info.szDevice[..len] == name).then(|| {
+            let r = info.monitorInfo.rcMonitor;
+            r.bottom - r.top > r.right - r.left
+        })
+    })
 }
 
 #[cfg(test)]

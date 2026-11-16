@@ -136,6 +136,7 @@ pub fn run(devices: Arc<Devices>) {
                 crate::system::log::error(&format!("diagnostics export failed: {err}"));
             }
         } else if e.id == quit_id {
+            devices.shutdown();
             std::process::exit(0);
         }
     }));

@@ -231,6 +231,7 @@ const VI = {
   Green: "Xanh lá",
   Blue: "Xanh dương",
   Reset: "Đặt lại",
+  Identify: "Nhận diện",
   Native: "Gốc",
   "User {n}": "Tùy chỉnh {n}",
   Profile: "Hồ sơ",

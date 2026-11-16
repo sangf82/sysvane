@@ -109,15 +109,31 @@ impl Devices {
         Ok(())
     }
 
-    /// Replaces every monitor with what `scan` finds now. A dropped monitor's thread ends after its call in
-    /// progress and releases its handle there; numbers follow the new order.
+    /// Replaces every monitor with what `scan` finds now. The old monitor threads are stopped first, so a
+    /// monitor never has two owners and a display-mode trial is reverted before the new module reads the
+    /// mode; numbers follow the new order.
     fn rescan(&self) {
+        let old = self.take(|id| matches!(id, DeviceId::Monitor(_)));
+        stop_all(old);
         let mut found = (self.scan)();
         crate::system::log::info(&format!("scan: {} monitor(s)", found.len()));
         let mut modules = self.modules.lock().unwrap();
-        modules.retain(|m| !matches!(m.id(), DeviceId::Monitor(_)));
         found.append(&mut modules);
         *modules = found;
+    }
+
+    /// Stops every module, so their `Drop` runs (a display-mode trial is reverted) before the core exits.
+    pub fn shutdown(&self) {
+        stop_all(self.take(|_| true));
+    }
+
+    fn take(&self, which: impl Fn(DeviceId) -> bool) -> Vec<Host> {
+        let mut modules = self.modules.lock().unwrap();
+        let (taken, kept) = std::mem::take(&mut *modules)
+            .into_iter()
+            .partition(|m| which(m.id()));
+        *modules = kept;
+        taken
     }
 
     pub fn autostart(&self) -> bool {
@@ -156,6 +172,26 @@ impl Devices {
         std::iter::once(core)
             .chain(self.modules.lock().unwrap().iter().map(Host::device))
             .collect()
+    }
+}
+
+/// Stops the modules side by side, each with the watchdog's time; one that is hung is logged and left behind.
+fn stop_all(hosts: Vec<Host>) {
+    let ids: Vec<DeviceId> = hosts.iter().map(Host::id).collect();
+    let stopped: Vec<bool> = std::thread::scope(|s| {
+        let waits: Vec<_> = hosts
+            .into_iter()
+            .map(|h| s.spawn(move || h.stop(crate::modules::DEADLINE)))
+            .collect();
+        waits
+            .into_iter()
+            .map(|w| w.join().unwrap_or(false))
+            .collect()
+    });
+    for (id, ok) in ids.into_iter().zip(stopped) {
+        if !ok {
+            crate::system::log::error(&format!("{id:?} did not stop; left behind"));
+        }
     }
 }
 

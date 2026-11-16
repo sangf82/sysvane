@@ -313,6 +313,7 @@ td.zero { color: var(--mute); }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2s; } }
 .mslider .dd-trigger { grid-column: 2 / 4; }
 .mslider .mfixed { grid-column: 2 / 4; }
+.mident { align-self: flex-end; margin-bottom: calc(-1 * var(--md)); }
 
 /* Overview top processes: the Processes table at panel size */
 .ptop th { padding: 0 0 var(--xs); text-align: left; font-size: 12px; font-weight: 500; color: var(--mute); border-bottom: 1px solid var(--hairline); }

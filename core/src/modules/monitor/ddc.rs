@@ -11,10 +11,12 @@ use windows_sys::Win32::Devices::Display::{
 };
 use windows_sys::Win32::Foundation::{HANDLE, LPARAM, RECT};
 use windows_sys::Win32::Graphics::Gdi::{
-    CreateDCW, DeleteDC, EnumDisplayMonitors, GetMonitorInfoW, HDC, HMONITOR, MONITORINFO,
-    MONITORINFOEXW,
+    CreateDCW, DISPLAY_DEVICEW, DeleteDC, EnumDisplayDevicesW, EnumDisplayMonitors,
+    GetMonitorInfoW, HDC, HMONITOR, MONITORINFO, MONITORINFOEXW,
 };
+use windows_sys::Win32::System::Registry::{HKEY_LOCAL_MACHINE, RRF_RT_REG_BINARY, RegGetValueW};
 use windows_sys::Win32::UI::ColorSystem::SetDeviceGammaRamp;
+use windows_sys::Win32::UI::WindowsAndMessaging::EDD_GET_DEVICE_INTERFACE_NAME;
 use windows_sys::core::BOOL;
 
 pub struct Physical {
@@ -153,6 +155,57 @@ impl Bus for Physical {
 
     fn turn(&mut self) -> Option<u8> {
         mode::turn(&self.device)
+    }
+
+    /// The first monitor on this display output: its interface name `\\?\DISPLAY#ACR0A4B#5&..#{guid}` gives
+    /// the registry key Windows keeps its EDID under.
+    fn edid(&mut self) -> Option<Vec<u8>> {
+        // SAFETY: DISPLAY_DEVICEW is plain data; cb says which struct it is.
+        let mut dd: DISPLAY_DEVICEW = unsafe { std::mem::zeroed() };
+        dd.cb = size_of::<DISPLAY_DEVICEW>() as u32;
+        // SAFETY: NUL-terminated adapter name and a DISPLAY_DEVICEW with cb set.
+        let ok = unsafe {
+            EnumDisplayDevicesW(
+                self.device.as_ptr(),
+                0,
+                &mut dd,
+                EDD_GET_DEVICE_INTERFACE_NAME,
+            )
+        };
+        if ok == 0 {
+            return None;
+        }
+        let len = dd.DeviceID.iter().position(|&c| c == 0).unwrap_or(128);
+        let id = String::from_utf16_lossy(&dd.DeviceID[..len]);
+        let parts: Vec<&str> = id.trim_start_matches(r"\\?\").split('#').collect();
+        let [class, hardware, instance, ..] = parts[..] else {
+            return None;
+        };
+        let key: Vec<u16> = format!(
+            r"SYSTEM\CurrentControlSet\Enum\{class}\{hardware}\{instance}\Device Parameters"
+        )
+        .encode_utf16()
+        .chain([0])
+        .collect();
+        let value: Vec<u16> = "EDID".encode_utf16().chain([0]).collect();
+        let mut buf = vec![0u8; 512];
+        let mut size = buf.len() as u32;
+        // SAFETY: NUL-terminated key and value names; `buf` holds `size` bytes.
+        let r = unsafe {
+            RegGetValueW(
+                HKEY_LOCAL_MACHINE,
+                key.as_ptr(),
+                value.as_ptr(),
+                RRF_RT_REG_BINARY,
+                std::ptr::null_mut(),
+                buf.as_mut_ptr().cast(),
+                &mut size,
+            )
+        };
+        (r == 0).then(|| {
+            buf.truncate(size as usize);
+            buf
+        })
     }
 
     fn set_mode(&mut self, m: Mode, turn: u8, keep: bool) -> Result<(), String> {

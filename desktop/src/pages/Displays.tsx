@@ -131,7 +131,9 @@ function Card({ d, on, pick }: { d: Device; on: boolean; pick: () => void }) {
 
 function Settings({ d }: { d: Device }) {
   const [error, setError] = useState<string | null>(null);
-  const [profile, setProfile] = useState(d.profiles[0] ?? "");
+  const [picked, setProfile] = useState("");
+  // The list arrives after the first read, so the choice falls back to its first entry until one is picked.
+  const profile = d.profiles.includes(picked) ? picked : (d.profiles[0] ?? "");
   const [name, setName] = useState("");
   const send = (control: ControlId, value: ControlValue) => {
     setError(null);
@@ -177,6 +179,12 @@ function Settings({ d }: { d: Device }) {
   return (
     <section className="mpanel" aria-label={d.name}>
       {!read && !d.error && <p className="muted">{t("Reading the monitor…")}</p>}
+      {/* Dims this monitor three times, to tell two of one model apart. */}
+      {num(d, "gpu_gamma") != null && (
+        <button className="btn mident" onClick={() => send("identify", true)} disabled={d.busy}>
+          {t("Identify")}
+        </button>
+      )}
       {read && (
         <div className="mgroups">
           <div className="mgroup">
@@ -222,7 +230,7 @@ function Settings({ d }: { d: Device }) {
               {sliders(GPU)}
               <div className="mfield">
                 <span />
-                <button className="btn" disabled={GPU.every(({ id }) => num(d, id) === GPU_NEUTRAL[id as string])} onClick={() => GPU.forEach(({ id }) => num(d, id) !== GPU_NEUTRAL[id as string] && send(id, GPU_NEUTRAL[id as string]))}>
+                <button className="btn" disabled={GPU.every(({ id }) => num(d, id) === GPU_NEUTRAL[id as string])} onClick={() => send("gpu_reset", true)}>
                   {t("Reset")}
                 </button>
               </div>

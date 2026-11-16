@@ -12,7 +12,11 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{DestroyIcon, GetIconInfo, HICO
 /// no icon or cannot be read; the UI then draws a placeholder.
 #[tauri::command]
 pub async fn exe_icon(path: String) -> tauri::ipc::Response {
-    tauri::ipc::Response::new(rgba(&path).unwrap_or_default())
+    // Reading PE resources blocks; a page asks for many at once, so keep them off the async workers.
+    let bytes = tauri::async_runtime::spawn_blocking(move || rgba(&path).unwrap_or_default())
+        .await
+        .unwrap_or_default();
+    tauri::ipc::Response::new(bytes)
 }
 
 fn rgba(path: &str) -> Option<Vec<u8>> {

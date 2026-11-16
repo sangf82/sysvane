@@ -26,6 +26,8 @@ export type ControlId =
   | "gpu_red"
   | "gpu_green"
   | "gpu_blue"
+  | "gpu_reset"
+  | "identify"
   | { vcp: number };
 
 export type ControlValue = boolean | number | string;
