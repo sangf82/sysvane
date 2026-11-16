@@ -3,21 +3,51 @@
 Updated 2026-11-16. Read this before starting; update or remove a step when it ends. Tree and rules: `docs/architecture.md`. Milestones: `docs/plan.md`.
 
 ## State
-M4 (DDC module) is done and committed (`5d43806`, `ecec470`). The UI redesigns are in `b3ee479`. **Not committed:** the Displays page redesign below (`Displays.tsx`, `styles.css`, `i18n.ts`, `glyphs.tsx`), which passes `npm run build` and was checked on screen in both themes. **Next:** fix review items 1–3 below, commit, then M5, the LCD module (`docs/plan.md`): start by finding the Thermalright Levita Vision USB protocol.
+Branch `main`. M4 (DDC module) is done and committed (`5d43806`, `ecec470`). The UI redesigns are in `b3ee479`. The Displays redesign is in `4aa203f`; its review fixes (`styles.css`) are **not committed**. The Claude Code workflow (agents, commands, hooks, release flow) was reworked on 2026-11-16 and is **not committed**. No Rust changed this session.
 
-### Displays redesign (2026-11-16, uncommitted)
+### Uncommitted (two groups, commit separately)
+1. **UI review fixes:** `desktop/src/styles.css`, this file. Ready to commit ("Fix Displays review items").
+2. **Claude Code workflow, ready to commit** ("Set up Claude Code workflow"): `AGENTS.md` (rewritten short; rules moved to trail learnings and `docs/`), `.claude/settings.json` (`skillOverrides`, `rust-analyzer-lsp`), `.claude/agents/` (`rust-core` and `frontend-ui` set to Sonnet; new `scout` and `verify` on Haiku), `.claude/commands/` (`/status`, `/milestone`, `/handoff`, `/release`), `.claude/hooks/guard-monitor.ps1` (agent-desktop match only at command position) and `lint-on-stop.ps1` (lints only files edited since the last clean pass), `.github/workflows/release.yml` (notes from `docs/releases/<tag>.md`), `docs/releases/README.md`. Leave `.claude/settings.local.json.bak` out; the owner may delete it.
+
+### Next
+1. Commit the two groups above (owner says yes first).
+2. `/milestone M5` (LCD module): it grills the owner on the M5 open questions (Levita Vision USB protocol, built-in themes) before any code. Done when `docs/plan.md` M5 "done when" holds.
+3. Fix review items 1 and 2 below when the UI is next touched (`styles.css`).
+4. If `animate-ui` is to be used: run `npx shadcn init` in `desktop/` only after `frontend-ui` shows which files it changes (`styles.css`, aliases, Tailwind).
+
+### Decisions (this session, not in the code)
+- Model roles: Sonnet leads, Opus is advisor (`advisorModel` in user settings), Haiku for `scout` and `verify`. The global `CLAUDE_CODE_SUBAGENT_MODEL=haiku` was removed from `~/.claude/settings.json` (backup `settings.json.bak-subagent`) because it forced every subagent, including `rust-core`, onto Haiku.
+- FE skills (`impeccable`, `unslop`, `logo-design`) and `rust-best-practices` are hidden from the main session and preloaded by the agents; `unslop` is review only (`/unslop`); `animate-ui` stays visible and is preloaded by `frontend-ui`.
+- The shadcn MCP stays: `animate-ui` needs the shadcn registry even though `desktop/` has no `components.json` yet.
+- `/release` pushes after the owner approves the changelog; normal work asks about commits only.
+- Hardware safety rules stay in `AGENTS.md` (always loaded), not in learnings, which load only when a prompt matches.
+
+### Open questions
+- Hook `tool-savings` and the trail "tokens saved" line were removed from `settings.local.json`; run `trail init` to restore. Recommendation: leave removed.
+- Ask the owner whether a pre-push confirmation inside `/release` is wanted. Recommendation: no, changelog approval is the gate.
+
+### Not verified
+- The agents `frontend-ui` and `rust-core` loading their preloaded skills while those are `user-invocable-only`.
+- `scout` and `verify` actually running on Haiku (check the status line).
+- `/status`, `/milestone`, `/release` and the changed `release.yml` (`--notes-file`) have never run. First real `/release` will test the workflow.
+- `skills-lock.json` restore on a fresh clone (`.claude/skills/` is gitignored).
+
+### Gotchas
+- `guard-monitor` used to block any Bash command whose text contained "agent-desktop" and "find"/"press"; fixed, but write skill or agent files with Write/Edit if it trips again.
+- Trail hooks live in `.claude/settings.local.json` (gitignored), so they only exist on this machine.
+- PowerShell 5.1 `Set-Content` has no `-NoNewline`; use the Edit tool for hook files.
+
+### Displays redesign (2026-11-16, `4aa203f`; review fixes uncommitted)
 - Under the monitor cards, one panel per section, full width, in this order: Profiles (first, for a quick pick) / Display (Windows: resolution, refresh rate, orientation, Identify) / Picture (DDC: brightness, contrast, volume) / Colour.
 - Colour has a switch, Monitor (DDC) | Graphics card. Both stay in force; the switch only picks which sliders show. Default: Graphics card when its colour is changed or the monitor has no DDC colour, Monitor otherwise. A note says when the other one is also changed.
 - Section headers carry a 16 px Lucide icon from `components/glyphs.tsx` (bookmark, monitor, sun, palette); Identify and Reset carry scan and undo. Header class is `.sechead`: `.mhead` already belongs to the meter rows.
 - Sliders are drawn from tokens (`--pct` fills the track); the number beside each is an input (Enter or blur sends, Esc drops, held to 0–100). No white-point swatches in the headers: they read as a radio or a checkbox. The card swatch shows the monitor white point through the GPU one.
 
-### Review of the redesign (impeccable audit, 15/20), not fixed yet
-1. Light theme: slider track and thumb under 3:1 against the panel (`#3ecf8e` on `#fafafa` about 1.9:1, thumb ring about 2.5:1, empty track about 1.6:1).
-2. `.sechead` does not wrap: in a panel under about 520 px the Colour switch and Reset overflow.
-3. `.mnum` focus is a 1 px border colour change; give it the slider's focus ring.
-4. Thumb 14 px and number field about 22 px tall, under 24 px.
-5. `.problem` (`styles.css:283`) uses a red left rule; the detector flags it.
-6. Thumb shadow is a hard-coded `rgb(0 0 0 / 0.2)`.
+### Review of the redesign (impeccable audit, 15/20)
+- Fixed: slider fill and thumb use `--control` (`#1f9d6a` in light, about 3.3:1 on `#fafafa`; `#3ecf8e` in dark); `.sechead` wraps (checked at 700 and 560 px, both tabs); `.mnum` focus has the 2 px emerald ring; the thumb shadow comes from `--ink`. The empty track stays light (`--hairline-strong`): the thumb and fill identify the control.
+- Open:
+1. Thumb 14 px and number field about 22 px tall, under 24 px.
+2. `.problem` (`styles.css:285`) uses a red left rule; the detector flags it.
 - The detector ran on source only; the rendered scan needs the app started with a DevTools port. Typing into the number field is not tried on the real app.
 
 ### M4 summary (what exists)

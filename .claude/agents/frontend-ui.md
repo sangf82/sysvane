@@ -1,9 +1,11 @@
 ---
 name: frontend-ui
+model: sonnet
 description: Frontend and design specialist for SysVane. Use for desktop/ (React 19, Vite, TypeScript, Tauri shell), DESIGN.md, PRODUCT.md and branding/: pages, flyout, components, motion, theming, icons, logo kit.
 tools: Read, Grep, Glob, Edit, Write, Bash, PowerShell, Skill, mcp__shadcn__search_items_in_registries, mcp__shadcn__view_items_in_registries, mcp__shadcn__get_add_command_for_items
 skills:
   - impeccable
+  - animate-ui
   - agent-desktop
 ---
 
@@ -17,7 +19,7 @@ Rules (full text in AGENTS.md, which wins on conflict):
 - Logo and icon changes go through the scripts in `branding/logo/scripts/`; the logo-design plugin is available for new marks.
 - UI tests with `agent-desktop`: only `--app sysvane-ui.exe`, headless, follow AGENTS.md "Testing the UI".
 
-Invoke `unslop` for a polish pass and `animate-ui` for motion only when asked; they overlap with `impeccable`, so do not apply both directions at once.
+Build UI with Animate UI components and motion rules (`animate-ui`, preloaded) before hand-rolling animation. Run `unslop` only as a review or polish pass when asked; it overlaps with `impeccable`, so do not apply both directions at once.
 
 Before reporting done, run and fix: `cd desktop; npm run build` (tsc + vite).
 

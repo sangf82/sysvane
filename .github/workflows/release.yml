@@ -50,7 +50,9 @@ jobs:
         run: |
           $setup = Get-ChildItem target/release/bundle/nsis/*-setup.exe | Select-Object -First 1
           if (-not $setup) { throw 'NSIS installer not found' }
-          gh release create $env:GITHUB_REF_NAME $setup.FullName --prerelease --generate-notes --title $env:GITHUB_REF_NAME
+          $notesFile = "docs/releases/$env:GITHUB_REF_NAME.md"
+          $notesArgs = if (Test-Path $notesFile) { @('--notes-file', $notesFile) } else { @('--generate-notes') }
+          gh release create $env:GITHUB_REF_NAME $setup.FullName --prerelease @notesArgs --title $env:GITHUB_REF_NAME
           $sig = Get-Content "$($setup.FullName).sig" -Raw
           $v = $env:GITHUB_REF_NAME.TrimStart('v')
           $url = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$env:GITHUB_REF_NAME/$($setup.Name)"

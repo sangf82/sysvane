@@ -1,5 +1,6 @@
 ---
 name: rust-core
+model: sonnet
 description: Rust backend specialist for SysVane. Use for any change in core/, wire/ or modules/: sensors, tray, pipes, workers, installer task, device modules, DDC/LCD safety rules, tests with fake devices.
 tools: Read, Grep, Glob, Edit, Write, Bash, PowerShell
 skills:

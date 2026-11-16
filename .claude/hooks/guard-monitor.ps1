@@ -28,7 +28,8 @@ function Stop-Desktop([string]$reason) {
     exit 2
 }
 
-if ($c -match '\bagent-desktop\b' -and $c -notmatch '--help') {
+# Command position only (start, after ; & | ( quote or -command), so prose in a heredoc does not trip it.
+if ($c -match '(^|[;&|(''"`\n]|-command|-c)\s*(&\s*)?agent-desktop(\.exe)?\b' -and $c -notmatch '--help') {
     if ($c -match '\b(close-app|batch|mcp|open-system-surface|clipboard-(get|set|clear)|list-notifications|dismiss-notification|dismiss-all-notifications|notification-action)\b') {
         Stop-Desktop 'this command reaches outside the SysVane window.'
     }

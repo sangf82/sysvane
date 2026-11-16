@@ -1,89 +1,43 @@
 # SysVane
 
-Very low-RAM, tray-first Windows app replacing ASUS Armoury Crate and vendor device suites: hardware monitoring, displays, peripherals, RGB, fans and the AIO LCD. All Rust except the React UI. Plan and status: `docs/plan.md`.
+Very low-RAM, tray-first Windows app replacing ASUS Armoury Crate and vendor device suites. Rust core plus a React UI. Status and plan: `docs/handoff.md` (read first, update when a step ends), `docs/plan.md`, `docs/architecture.md` (tree and rules).
+
+## Start a task
+
+1. `trail ask "<task>" --source` before grepping. Past decisions, dead ends and gotchas live in `.trail/learnings/`; they replace long rule lists here.
+2. Work in the right place: Rust in `core/`, `wire/` (agent `rust-core`); UI in `desktop/`, `DESIGN.md`, `branding/` (agent `frontend-ui`). `wire/` and `desktop/src/wire.ts` change together.
+3. Before commit, push or PR: `trail check`. Save what the code cannot say (a cause found after failed attempts, an approach dropped and why) with `trail note`.
 
 ## Commands
 
-- `cargo check -p sysvane-core` / `cargo clippy -p sysvane-core` — type-check / lint the core.
-- `cargo test -p sysvane-core -p sysvane-wire` — keep green.
-- `cd desktop; npm run build` — type-check and build the UI.
-- `cd desktop; npm run tauri dev` — run the UI.
+- `cargo test -p sysvane-core -p sysvane-wire`, `cargo clippy -p sysvane-core -- -D warnings`
+- `cd desktop; npm run build` (type-check and build), `npm run tauri dev` (run; build the core too, the UI starts `sysvane-core.exe` from its own folder)
+- Release: only when the user asks (`/release`, `.claude/commands/release.md`). It drafts `docs/releases/vX.Y.Z.md`, waits for the user's review, and only then bumps, tags, pushes and lets CI build. During normal work ask about commits, never about releases. Signing key and update channel: see trail learnings on updates.
 
-## Layout
+## Invariants
 
-- `core/` — `sysvane-core`, the headless background program. `src/sensors/` (generic monitoring), `src/ipc/` (pipes, commands, access), `src/system/` (tray, install, power, workers, Win32 helpers), `src/modules/` (device module host, config, fake device). `assets/`: tray icon, `pawnio/` driver module.
-- Device modules: `core/src/modules/<kind>/<vendor>.rs` (kind: fan, rgb, lcd, mouse, keyboard, monitor, headset), each with `detect()`, listed statically in `modules/mod.rs`. A vendor protocol shared across kinds goes in `vendors/<vendor>/` with no `Module` impl. Board variants are data profiles. No folder until its first real module.
-- `desktop/` — `sysvane-ui`, Tauri 2 + React/Vite. Started on demand, exits when closed, never touches hardware. `src/pages/`, `src/components/`, `src/lib/`; Tauri shell in `src-tauri/src/` (`core_proc`, `relay`, `window`, `icon`: exe icons for the process list).
-- `wire/` — `sysvane-wire`, all the core and UI share: pipe name, process names, snapshot types (`consts`, `command`, `snapshot`). `desktop/src/wire.ts` mirrors them; a test reads it by path and fails if field names differ.
-- `docs/` — `architecture.md` (tree and rules), `handoff.md` (work in progress: read it first, update it when a step ends), `plan.md`, `devices/ddc/` (calibration, VCP notes, profiles for the future Rust DDC module).
-- `DESIGN.md` — UI design system.
-- `branding/logo/` — Crate logo kit (`kit/`, rules in `kit/GUIDELINES.md`) and `scripts/` that regenerate it and the Tauri icons. Tray icon: `core/assets/tray-32.rgba`.
-- `tools/` — read-only hardware probes, usable without the core.
-- `scripts/` — release helpers (`bump-version.ps1`).
-- `docs/research/` — dated, historical notes (old project name).
-- Commit `30b7852` holds the removed Python implementation to port from.
+- No Tauri, WebView, React or async runtime in `sysvane-core`; background RAM is the goal.
+- The UI never touches hardware. Each module enforces its own safety in the core. Validate every command and profile from the UI or disk in the core.
+- Tests use fake devices, never real hardware.
 
-## Architecture rules
+## Hardware safety (irreversible, always applies)
 
-- Keep Tauri, WebView and React out of `sysvane-core`. Background RAM is the main goal.
-- Modules are compiled in. No DLL or WASM plugin loading.
-- Code that needs a kernel driver or can hang runs in a supervised worker process.
-- One owner per hardware bus. A third-party tool may run only on a bus the core does not touch, through a fixed command line.
-- Each module owns its device's safety rules, enforced in the core, not the UI.
-- The UI starts `sysvane-core.exe` from its own folder: build both.
-- Keep hardware I/O off the UI and any thread with a deadline.
-- Target privilege model (`docs/plan.md`, M1): core runs as administrator from a scheduled task under `Program Files`; UI runs as a normal user. Until M1 the core is unelevated and only the temperature helper is elevated. Never trust a command or profile from the UI or disk: validate it in the core.
-- Each module keeps its own config, default profiles and fake device. No merged config. Profiles are data, never code.
+- Monitor DDC: never write `0x04`/`0x05`/`0x06`/`0x08` (factory reset), `0xD6`/`0xC6` off or standby, or `0x60` (input) unless the user explicitly accepts losing video. All writes go through one guarded function; no flag unlocks them. Never guess a value before reading it.
+- LCD: never send command types 4 or 5 (OTA); stop if the panel reports PM 32 or 50.
+- `.claude/hooks/guard-monitor.ps1` blocks these in shell calls. `SYSVANE_ALLOW_UNSAFE=1` bypasses it only when the user accepts losing the display.
 
-## Monitor safety (hard rules)
+## UI testing
 
-A wrong DDC write blacks out the display, and DDC/CI has no undo.
+`agent-desktop` only on SysVane: `agent-desktop snapshot --app sysvane-ui.exe -i`, headless (`set-value`, not `type`), `--timeout-ms 30000` on cold start. Run `agent-desktop skills get desktop` and `skills get platform` first. Never another app or the whole desktop.
 
-- Never write factory-reset codes `0x04`, `0x05`, `0x06`, `0x08`.
-- Never write power codes `0xD6`/`0xC6` with an off or standby value.
-- Never write input source `0x60` unless the user explicitly asks and accepts losing video.
-- All DDC writes go through one guarded function. No flag unlocks reset or power-off codes.
-- Profile apply skips power and input by default.
-- Do not guess a current value before it is read.
+## Model roles
 
-## LCD safety
+- Sonnet leads and decides. Opus advises: call the advisor before choosing an approach for a milestone, before finishing code that writes to hardware (DDC, LCD, fans) or changes `guard-monitor`, and before pushing a release. Haiku does cheap legwork: `scout` (read, find, trace, answers with `file:line`) and `verify` (runs fmt, clippy, tests, build; returns only failures). `rust-core` and `frontend-ui` write code on Sonnet.
+- Delegate lookups to `scout` and test runs to `verify` instead of reading files or test output in the main session.
+- Flow: `/status` (new session briefing) → `/milestone` (grill the owner, plan, develop, test, review) → `/handoff` (end the session: rewrite `docs/handoff.md`, trail notes) → `/release` (changelog review, tag, CI). Between them, ask only about commits.
 
-- Never send OTA or firmware-upgrade commands to the panel (command types 4 and 5).
-- Stop if the panel reports PM 32 or 50 until the Logo/RGB565 command conflict is resolved.
+## Agents and skills
 
-## Calibration notes
-
-- In picture mode 3 these AL258Q take colour preset 5 only over DDC (capabilities `14(05)`; writes of 1, 4 and 11 are ignored, 2026-11-16). Gains are written and read back at preset 5; the older note that preset 5 locks the gain DAC is not yet re-checked by eye.
-- Left panel: `0x14=5`, R50 G50 B50. Right panel: `0x14=5`, R47 G49 B51. Both: brightness 70, contrast 50.
-- Details: `docs/devices/ddc/CALIBRATION.md`.
-
-## Testing the UI
-
-Use `agent-desktop` (Windows UI Automation). Before first use in a session run `agent-desktop skills get desktop` and `agent-desktop skills get platform`, and follow them.
-
-- Operate only SysVane: `agent-desktop snapshot --app sysvane-ui.exe -i`. Never another app or the whole desktop (private content).
-- Quote refs in PowerShell: `'@s8f3k2p9:e8'`.
-- Stay headless: `set-value`, not `type`.
-- Cold start fills the Chromium tree slowly: `snapshot --timeout-ms 30000`.
-
-## Hooks, agents, tools
-
-- `.claude/hooks/guard-monitor.ps1` runs before every Bash/PowerShell call: blocks unsafe VCP writes, keeps `agent-desktop` on sysvane. `SYSVANE_ALLOW_UNSAFE=1` bypasses it, only when the user explicitly accepts losing the display. Keep its patterns in step with the Rust DDC command line once that exists.
-- `.claude/hooks/format-rust.ps1` runs `rustfmt` after each `.rs` edit.
-- `.claude/hooks/lint-on-stop.ps1` at Stop: fmt + clippy if Rust changed, `tsc --noEmit` if `desktop/src` changed; failure blocks the stop once.
-- `rust-core` agent (`.claude/agents/`): `core/`, `wire/`, `modules/`; runs fmt, clippy `-D warnings` and tests before reporting.
-- `frontend-ui` agent: `desktop/`, `DESIGN.md`, `branding/`; runs `npm run build`.
-- Trail: `trail ask "<task>"` before grepping; run `trail check` before commit, push or PR; learnings live in `.trail/learnings/`.
-- For Claude Code questions, use the `claude-code-guide` MCP first.
-
-## Release
-
-- CI: `.github/workflows/ci.yml` on push to `main` and PRs.
-- Release: `powershell -NoProfile -File scripts\bump-version.ps1 X.Y.Z`, commit, `git tag vX.Y.Z`, `git push --tags`. `release.yml` checks the tag equals the Cargo and package versions, builds the NSIS installer, publishes a pre-release.
-- The installer is signed for the updater: set `TAURI_SIGNING_PRIVATE_KEY` (path or text; local key `~/.sysvane/updater.key`, never in the repo) before `npm run tauri build`, and keep the same value in the GitHub secret of that name. `latest.json` lives on the fixed release tag `updates`.
-
-## Conventions
-
-- Rust 2024 edition; `std::thread` and channels in the core, no async runtime unless a module proves it needs one.
-- Tests use fake devices; never touch real hardware.
-- Add a dependency only when a module needs it.
+- `rust-core` preloads `rust-best-practices`; `frontend-ui` preloads `impeccable`, `animate-ui`, `agent-desktop`. These skills are hidden from the main session: delegate, or the user types `/unslop` for a review pass.
+- Hooks (`.claude/hooks/`): `format-rust` after `.rs` edits; `lint-on-stop` runs fmt, clippy and `tsc` on files edited since the last clean pass, and blocks the stop once on failure.
+- Claude Code questions: use the `claude-code-guide` MCP first.
