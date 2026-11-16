@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { Alert } from "../components/Alert";
 import { Dropdown } from "../components/Dropdown";
+import { Glyph } from "../components/glyphs";
 import { sendCommand } from "../lib/host";
 import { type Msg, t } from "../lib/i18n";
 import { type ControlId, type ControlValue, type Device, TICK_S } from "../wire";
@@ -70,38 +71,71 @@ const num = (d: Device, id: ControlId) => {
   return typeof v === "number" ? v : undefined;
 };
 
-/** The monitor's white point as its gains and brightness push it, relative to the strongest channel. Only values read back are used. */
-function tint(d: Device): string | undefined {
-  const [r, g, b] = GAINS.map(({ id }) => num(d, id));
+/** A white point as R/G/B gains (0–100) and a brightness push it, relative to the strongest channel. */
+function white(gains: (number | undefined)[], brightness = 100): [number, number, number] | undefined {
+  const [r, g, b] = gains;
   if (r == null || g == null || b == null) return undefined;
   const top = Math.max(r, g, b, 1);
-  const light = 0.35 + 0.65 * ((num(d, "brightness") ?? 100) / 100);
-  const ch = (v: number) => Math.round((v / top) * 255 * light);
-  return `rgb(${ch(r)} ${ch(g)} ${ch(b)})`;
+  const light = 0.35 + 0.65 * (brightness / 100);
+  return [r, g, b].map((v) => (v / top) * light) as [number, number, number];
+}
+const rgb = (w: [number, number, number] | undefined) => w && `rgb(${w.map((v) => Math.round(v * 255)).join(" ")})`;
+/** The monitor's own white point (DDC gains and brightness), from values read back only. */
+const monitorWhite = (d: Device) => white(GAINS.map(({ id }) => num(d, id)), num(d, "brightness"));
+/** The graphics card's white point for this display (gamma-ramp gains and brightness, 50 = unchanged). */
+const gpuWhite = (d: Device) => white(["gpu_red", "gpu_green", "gpu_blue"].map((id) => num(d, id as ControlId)), 50 + (num(d, "gpu_brightness") ?? 50));
+/** What reaches the eye: the card's colour shown through the monitor's. */
+function seen(d: Device) {
+  const m = monitorWhite(d);
+  const g = gpuWhite(d);
+  return rgb(m && g ? (m.map((v, i) => v * g[i]) as [number, number, number]) : (m ?? g));
 }
 
-/** Holds the dragged value until the monitor reports it, and sends only after the drag pauses: a DDC write takes tens of ms. */
+/** Holds the dragged or typed value until the device reports it, and sends only after the drag pauses: a DDC write takes tens of ms. */
 function Slider({ label, value, send }: { label: string; value: number; send: (n: number) => void }) {
   const [pending, setPending] = useState<number | null>(null);
+  const [draft, setDraft] = useState<string | null>(null);
   const timer = useRef(0);
   useEffect(() => {
     if (pending === value) setPending(null);
   }, [value, pending]);
-  const change = (n: number) => {
+  const change = (n: number, wait = 250) => {
     setPending(n);
     clearTimeout(timer.current);
     timer.current = window.setTimeout(() => {
       send(n);
       window.setTimeout(() => setPending((p) => (p === n ? null : p)), 3000);
-    }, 250);
+    }, wait);
+  };
+  // A typed number goes out at once, rounded and held to 0–100; an empty or non-number entry is dropped.
+  const commit = () => {
+    if (draft == null) return;
+    const n = Number(draft);
+    setDraft(null);
+    if (draft.trim() !== "" && Number.isFinite(n)) change(Math.min(100, Math.max(0, Math.round(n))), 0);
   };
   const shown = pending ?? value;
   return (
-    <label className="mslider">
+    <div className="mslider">
       <span>{label}</span>
-      <input type="range" min={0} max={100} value={shown} onChange={(e) => change(Number(e.target.value))} />
-      <span className="num">{shown}</span>
-    </label>
+      <input type="range" aria-label={label} min={0} max={100} value={shown} style={{ "--pct": `${shown}%` } as CSSProperties} onChange={(e) => change(Number(e.target.value))} />
+      <input
+        className="mnum"
+        type="number"
+        inputMode="numeric"
+        aria-label={t("{name} value", { name: label })}
+        min={0}
+        max={100}
+        value={draft ?? shown}
+        onChange={(e) => setDraft(e.target.value)}
+        onFocus={(e) => e.target.select()}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit();
+          if (e.key === "Escape") setDraft(null);
+        }}
+      />
+    </div>
   );
 }
 
@@ -115,7 +149,7 @@ function Card({ d, on, pick }: { d: Device; on: boolean; pick: () => void }) {
   return (
     <button className={`mcard${on ? " on" : ""}`} aria-pressed={on} onClick={pick}>
       <span className="mscreen" aria-hidden>
-        <span style={{ background: tint(d) }} />
+        <span style={{ background: seen(d) }} />
       </span>
       <span className="mtext">
         <b>{display || model}</b>
@@ -135,6 +169,7 @@ function Settings({ d }: { d: Device }) {
   // The list arrives after the first read, so the choice falls back to its first entry until one is picked.
   const profile = d.profiles.includes(picked) ? picked : (d.profiles[0] ?? "");
   const [name, setName] = useState("");
+  const [source, setSource] = useState<"monitor" | "gpu" | null>(null);
   const send = (control: ControlId, value: ControlValue) => {
     setError(null);
     sendCommand(d.id, control, value).catch((e) => setError(String(e)));
@@ -176,78 +211,113 @@ function Settings({ d }: { d: Device }) {
   const now = mode ? parseMode(mode) : undefined;
   const sizes = [...new Set(d.modes.map((m) => parseMode(m).size))];
   const rates = d.modes.filter((m) => parseMode(m).size === now?.size);
+  const ddcColour = preset != null || GAINS.some(({ id }) => num(d, id) != null);
+  const gpuColour = num(d, "gpu_gamma") != null;
+  const gpuChanged = gpuColour && GPU.some(({ id }) => num(d, id) !== GPU_NEUTRAL[id as string]);
+  // Both stay in force; the switch only picks which one is shown. The card's own when nothing was picked.
+  const shownSource = source ?? (!ddcColour || gpuChanged ? "gpu" : "monitor");
   return (
-    <section className="mpanel" aria-label={d.name}>
+    <section className="mgroups" aria-label={d.name}>
       {!read && !d.error && <p className="muted">{t("Reading the monitor…")}</p>}
-      {/* Dims this monitor three times, to tell two of one model apart. */}
-      {num(d, "gpu_gamma") != null && (
-        <button className="btn mident" onClick={() => send("identify", true)} disabled={d.busy}>
-          {t("Identify")}
-        </button>
+      {read && d.profiles.length > 0 && (
+        <div className="mpanel">
+          <div className="sechead">
+            <Glyph name="bookmark" size={16} />
+            <h2>{t("Profiles")}</h2>
+            <span className="muted">{t("Monitor settings only")}</span>
+          </div>
+          <div className="mfield">
+            <Dropdown label={t("Profile")} value={profile} onChange={setProfile} options={d.profiles.map((p) => ({ value: p, label: p }))} />
+            {busyButton("profile", t("Apply"), t("Applying…"))}
+          </div>
+          <div className="mfield">
+            <input className="minput" aria-label={t("Profile name")} placeholder={t("Save current settings as")} maxLength={48} value={name} onChange={(e) => setName(e.target.value)} />
+            {busyButton("save_profile", t("Save"), t("Saving…"), !name.trim())}
+          </div>
+        </div>
       )}
-      {read && (
-        <div className="mgroups">
-          <div className="mgroup">
-            <h2>{t("Picture")}</h2>
-            {now && d.modes.length > 0 && (
-              <>
-                <div className="mslider">
-                  <span>{t("Resolution")}</span>
-                  {/* The fastest rate the new size has, as Windows Settings picks. */}
-                  <Dropdown label={t("Resolution")} value={now.size} onChange={(size) => send("display_mode", d.modes.find((m) => parseMode(m).size === size) ?? mode!)} options={sizes.map((size) => ({ value: size, label: sizeLabel(size) }))} />
-                </div>
-                <div className="mslider">
-                  <span>{t("Refresh rate")}</span>
-                  <Dropdown label={t("Refresh rate")} value={mode!} onChange={(m) => send("display_mode", m)} options={rates.map((m) => ({ value: m, label: `${parseMode(m).hz} Hz` }))} />
-                </div>
-              </>
+      {read && now && d.modes.length > 0 && (
+        <div className="mpanel">
+          <div className="sechead">
+            <Glyph name="monitor" size={16} />
+            <h2>{t("Display")}</h2>
+            <span className="muted">{t("Set by Windows")}</span>
+            {/* Dims this monitor three times, to tell two of one model apart. */}
+            {gpuColour && (
+              <button className="btn" onClick={() => send("identify", true)} disabled={d.busy}>
+                <Glyph name="scan" />
+                {t("Identify")}
+              </button>
             )}
-            {turn != null && (
-              <div className="mslider">
-                <span>{t("Orientation")}</span>
-                <Dropdown label={t("Orientation")} value={String(turn)} onChange={(v) => send("orientation", Number(v))} options={TURNS.map((label, i) => ({ value: String(i), label: t(label) }))} />
-              </div>
-            )}
-            {sliders(PICTURE)}
-            {sliders(MORE_PICTURE)}
           </div>
-          <div className="mgroup">
-            <h2>{t("Colour")}</h2>
-            {preset != null && (
-              <div className="mslider">
-                <span>{t("Colour preset")}</span>
-                {/* One preset listed: nothing to pick, so it is shown, not offered. */}
-                {presetOptions.length > 1 ? <Dropdown label={t("Colour preset")} value={String(preset)} onChange={(v) => send("color_preset", Number(v))} options={presetOptions} /> : <span className="mfixed">{presetOptions[0]?.label ?? preset}</span>}
-              </div>
-            )}
-            {sliders(GAINS)}
-            {sliders(MORE_COLOUR)}
+          <div className="mslider">
+            <span>{t("Resolution")}</span>
+            {/* The fastest rate the new size has, as Windows Settings picks. */}
+            <Dropdown label={t("Resolution")} value={now.size} onChange={(size) => send("display_mode", d.modes.find((m) => parseMode(m).size === size) ?? mode!)} options={sizes.map((size) => ({ value: size, label: sizeLabel(size) }))} />
           </div>
-          {num(d, "gpu_gamma") != null && (
-            <div className="mgroup">
-              <h2>{t("GPU colour")}</h2>
-              <p className="muted">{t("Works on any monitor. Leave colour at default in the GPU control panel, or the two will undo each other.")}</p>
-              {sliders(GPU)}
-              <div className="mfield">
-                <span />
-                <button className="btn" disabled={GPU.every(({ id }) => num(d, id) === GPU_NEUTRAL[id as string])} onClick={() => send("gpu_reset", true)}>
-                  {t("Reset")}
-                </button>
-              </div>
+          <div className="mslider">
+            <span>{t("Refresh rate")}</span>
+            <Dropdown label={t("Refresh rate")} value={mode!} onChange={(m) => send("display_mode", m)} options={rates.map((m) => ({ value: m, label: `${parseMode(m).hz} Hz` }))} />
+          </div>
+          {turn != null && (
+            <div className="mslider">
+              <span>{t("Orientation")}</span>
+              <Dropdown label={t("Orientation")} value={String(turn)} onChange={(v) => send("orientation", Number(v))} options={TURNS.map((label, i) => ({ value: String(i), label: t(label) }))} />
             </div>
           )}
-          {d.profiles.length > 0 && (
-            <div className="mgroup">
-              <h2>{t("Profiles")}</h2>
-              <div className="mfield">
-                <Dropdown label={t("Profile")} value={profile} onChange={setProfile} options={d.profiles.map((p) => ({ value: p, label: p }))} />
-                {busyButton("profile", t("Apply"), t("Applying…"))}
+        </div>
+      )}
+      {read && num(d, "brightness") != null && (
+        <div className="mpanel">
+          <div className="sechead">
+            <Glyph name="sun" size={16} />
+            <h2>{t("Picture")}</h2>
+            <span className="muted">{t("Set in the monitor over DDC/CI")}</span>
+          </div>
+          {sliders(PICTURE)}
+          {sliders(MORE_PICTURE)}
+        </div>
+      )}
+      {read && (ddcColour || gpuColour) && (
+        <div className="mpanel">
+          <div className="sechead">
+            <Glyph name="palette" size={16} />
+            <h2>{t("Colour")}</h2>
+            {ddcColour && gpuColour && (
+              <div className="seg" role="group" aria-label={t("Colour from")}>
+                {(["monitor", "gpu"] as const).map((s) => (
+                  <button key={s} className={shownSource === s ? "on" : ""} aria-pressed={shownSource === s} onClick={() => setSource(s)}>
+                    {s === "monitor" ? t("Monitor (DDC)") : t("Graphics card")}
+                  </button>
+                ))}
               </div>
-              <div className="mfield">
-                <input className="minput" aria-label={t("Profile name")} placeholder={t("Save current settings as")} maxLength={48} value={name} onChange={(e) => setName(e.target.value)} />
-                {busyButton("save_profile", t("Save"), t("Saving…"), !name.trim())}
-              </div>
-            </div>
+            )}
+            {shownSource === "gpu" && (
+              <button className="btn" disabled={!gpuChanged} onClick={() => send("gpu_reset", true)}>
+                <Glyph name="undo" />
+                {t("Reset")}
+              </button>
+            )}
+          </div>
+          {shownSource === "monitor" ? (
+            <>
+              <p className="muted">{t("Kept in the monitor over DDC/CI; profiles save these")}</p>
+              {preset != null && (
+                <div className="mslider">
+                  <span>{t("Colour preset")}</span>
+                  {/* One preset listed: nothing to pick, so it is shown, not offered. */}
+                  {presetOptions.length > 1 ? <Dropdown label={t("Colour preset")} value={String(preset)} onChange={(v) => send("color_preset", Number(v))} options={presetOptions} /> : <span className="mfixed">{presetOptions[0]?.label ?? preset}</span>}
+                </div>
+              )}
+              {sliders(GAINS)}
+              {sliders(MORE_COLOUR)}
+              {gpuChanged && <p className="muted">{t("Graphics card colour is also changed and shows on top of this")}</p>}
+            </>
+          ) : (
+            <>
+              <p className="muted">{t("Applied by the graphics card on top of the monitor's own colour; works on any monitor. Leave colour at default in the GPU control panel, or the two will undo each other.")}</p>
+              {sliders(GPU)}
+            </>
           )}
         </div>
       )}

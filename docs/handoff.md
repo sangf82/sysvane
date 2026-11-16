@@ -3,7 +3,22 @@
 Updated 2026-11-16. Read this before starting; update or remove a step when it ends. Tree and rules: `docs/architecture.md`. Milestones: `docs/plan.md`.
 
 ## State
-M4 (DDC module) is done and committed (`5d43806`, review fixes after it). The UI redesigns are in `b3ee479`. **Next: M5, the LCD module** (`docs/plan.md`): start by finding the Thermalright Levita Vision USB protocol.
+M4 (DDC module) is done and committed (`5d43806`, `ecec470`). The UI redesigns are in `b3ee479`. **Not committed:** the Displays page redesign below (`Displays.tsx`, `styles.css`, `i18n.ts`, `glyphs.tsx`), which passes `npm run build` and was checked on screen in both themes. **Next:** fix review items 1–3 below, commit, then M5, the LCD module (`docs/plan.md`): start by finding the Thermalright Levita Vision USB protocol.
+
+### Displays redesign (2026-11-16, uncommitted)
+- Under the monitor cards, one panel per section, full width, in this order: Profiles (first, for a quick pick) / Display (Windows: resolution, refresh rate, orientation, Identify) / Picture (DDC: brightness, contrast, volume) / Colour.
+- Colour has a switch, Monitor (DDC) | Graphics card. Both stay in force; the switch only picks which sliders show. Default: Graphics card when its colour is changed or the monitor has no DDC colour, Monitor otherwise. A note says when the other one is also changed.
+- Section headers carry a 16 px Lucide icon from `components/glyphs.tsx` (bookmark, monitor, sun, palette); Identify and Reset carry scan and undo. Header class is `.sechead`: `.mhead` already belongs to the meter rows.
+- Sliders are drawn from tokens (`--pct` fills the track); the number beside each is an input (Enter or blur sends, Esc drops, held to 0–100). No white-point swatches in the headers: they read as a radio or a checkbox. The card swatch shows the monitor white point through the GPU one.
+
+### Review of the redesign (impeccable audit, 15/20), not fixed yet
+1. Light theme: slider track and thumb under 3:1 against the panel (`#3ecf8e` on `#fafafa` about 1.9:1, thumb ring about 2.5:1, empty track about 1.6:1).
+2. `.sechead` does not wrap: in a panel under about 520 px the Colour switch and Reset overflow.
+3. `.mnum` focus is a 1 px border colour change; give it the slider's focus ring.
+4. Thumb 14 px and number field about 22 px tall, under 24 px.
+5. `.problem` (`styles.css:283`) uses a red left rule; the detector flags it.
+6. Thumb shadow is a hard-coded `rgb(0 0 0 / 0.2)`.
+- The detector ran on source only; the rendered scan needs the app started with a DevTools port. Typing into the number field is not tried on the real app.
 
 ### M4 summary (what exists)
 - `core/src/modules/monitor/`: `vcp.rs` (allowlist, the one guarded write, `Caps` parser, `Bus` trait, test `Fake`), `ddc.rs` (dxva2, capabilities, EDID from the registry, gamma ramp), `profile.rs` (JSON profiles), `mode.rs` (resolution, refresh rate, orientation, desktop-shape check), `gamma.rs` (GPU colour), `edid.rs` (name and serial), `mod.rs` (`Monitor` module).
@@ -13,7 +28,7 @@ M4 (DDC module) is done and committed (`5d43806`, review fixes after it). The UI
 - Resolution, refresh rate and orientation are 15 s trials (keep or revert; a failed revert is retried every second; quit from the tray and Scan stop the modules first, so their `Drop` reverts).
 - GPU colour through `SetDeviceGammaRamp` (brightness, contrast, gamma, R/G/B), written only when not neutral, again at start, resume and after mode changes; saved per monitor by EDID serial, or by display number when the serial is zero. `GpuReset` is one command. `Identify` dims the monitor 3 times through the ramp.
 - Monitor names come from the EDID name ("AL258Q · Display 1"); the capabilities' `model` ("CVTE", the scaler) gates model-specific profile codes.
-- UI: Displays page (cards, Picture / Colour / GPU colour / Profiles, Identify, Apply/Save spinners via `Device.busy`).
+- UI: Displays page, see "Displays redesign" above. Apply/Save spinners via `Device.busy`.
 
 ### Checked on the real PC (2026-11-16)
 - Both calibrated profiles applied from the app with no error: Display 2 (left) B70 C50 R50 G50 B50 preset 5; Display 1 (right) B70 C50 R47 G49 B51 preset 5.
@@ -45,6 +60,6 @@ M4 (DDC module) is done and committed (`5d43806`, review fixes after it). The UI
 - `trail check` flags `desktop/package-lock.json`, `AGENTS.md:71`, `devices.rs` and `config.rs` by keyword: all false so far.
 - `vcp::Fake` is test-only. The debug fake device (`modules/fake.rs`) is unrelated and stays.
 - A dev core started by `npm run tauri dev` is unelevated: no CPU temperature. Start `target\debug\sysvane-core.exe` with `-Verb RunAs` (after stopping the unelevated one). An elevated core can only be stopped from an elevated shell.
-- `agent-desktop` on this PC: use `find --app sysvane-ui.exe --window-id <id>`, not `snapshot`. Monitor cards are `switch` elements (`toggle`). Open dropdowns with `click`, then pick the `option`; picking the current value sends nothing.
+- `agent-desktop` on this PC: use `find --app sysvane-ui.exe --window-id <id>`, not `snapshot`. Anything with `aria-pressed` (monitor cards, the Colour switch, `.seg` buttons) is a `switch`: use `toggle`. After a hot reload the tree can lag; pass `--timeout-ms 15000`. Open dropdowns with `click`, then pick the `option`; picking the current value sends nothing.
 - `System.Windows.Forms.Screen` caches in a long-running PowerShell: read screen sizes from a fresh process.
 - `tools/probe-ddc.ps1` sees a monitor only while it is on; it can read while the core runs.
